@@ -1,0 +1,70 @@
+// Applied into app/build.gradle by cordova-android (the plugin.xml <framework
+// type="gradleReference"> entry puts an `apply from:` for this file in the
+// "PLUGIN GRADLE EXTENSIONS" block, which runs after
+// `apply plugin: 'com.android.application'`, as Chaquopy requires).
+//
+// Chaquopy (https://chaquo.com/chaquopy/) embeds CPython in the APK. Docs for
+// the DSL used below: https://chaquo.com/chaquopy/doc/current/android.html
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url "https://chaquo.com/maven" }
+    }
+    dependencies {
+        classpath "com.chaquo.python:gradle:17.1.0"
+    }
+}
+
+apply plugin: "com.chaquo.python"
+
+// ---------------------------------------------------------------------------
+// Settings you may want to change
+// ---------------------------------------------------------------------------
+
+// Python version bundled in the app. Python 3.12+ supports 64-bit ABIs only
+// (arm64-v8a, x86_64); 3.11 and older also support 32-bit devices.
+def pyforgePythonVersion = "3.13"
+
+// Python on the *build machine* must have the same major.minor as above:
+// Chaquopy uses it to run pip for python/requirements.txt. Override with
+// -PpyforgeBuildPython=/path/to/python3.13 or the PYFORGE_BUILD_PYTHON env var.
+def pyforgeBuildPython = project.findProperty("pyforgeBuildPython") ?: System.getenv("PYFORGE_BUILD_PYTHON")
+
+// Packages baked into the APK (the *only* way to ship compiled packages such
+// as numpy/matplotlib/pillow with Chaquopy's officially supported route).
+// The project root is two levels above platforms/android.
+def pyforgeRequirements = new File(rootProject.projectDir, "../../python/requirements.txt")
+
+// ---------------------------------------------------------------------------
+
+def is64BitOnly = !(pyforgePythonVersion in ["3.8", "3.9", "3.10", "3.11"])
+
+android {
+    defaultConfig {
+        ndk {
+            if (is64BitOnly) {
+                abiFilters "arm64-v8a", "x86_64"
+            } else {
+                abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+            }
+        }
+    }
+}
+
+chaquopy {
+    defaultConfig {
+        version = pyforgePythonVersion
+        if (pyforgeBuildPython) {
+            buildPython(pyforgeBuildPython.toString())
+        }
+        pip {
+            // pip's own dependency of our package manager; pure Python.
+            install("packaging")
+            if (pyforgeRequirements.exists()) {
+                install("-r", pyforgeRequirements.absolutePath)
+            }
+        }
+    }
+}

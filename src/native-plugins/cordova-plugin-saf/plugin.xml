@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    id="cordova-plugin-saf"
+    version="0.1.0">
+
+    <name>SAF</name>
+    <description>Storage Access Framework (scoped storage) access: pick a folder, list/read/write/create/delete/rename documents in it.</description>
+    <license>Apache-2.0</license>
+
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="SAF">
+                <param name="android-package" value="com.pyforge.saf.SafPlugin" />
+            </feature>
+        </config-file>
+
+        <!-- DocumentFile is the high-level wrapper over the raw
+             DocumentsContract/ContentResolver SAF APIs — same dependency
+             Acode's own sdcard plugin uses for the same reason. -->
+        <framework src="androidx.documentfile:documentfile:1.0.1" />
+
+        <source-file src="src/android/SafPlugin.java" target-dir="src/com/pyforge/saf" />
+    </platform>
+</plugin>

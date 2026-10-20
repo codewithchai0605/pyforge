@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.pyforge.app" version="0.1.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>PyForge</name>
+    <description>A Python IDE for Android: write, run and debug Python with turtle graphics, plots and one-click packages.</description>
+    <author email="dev@example.dev">PyForge</author>
+    <content src="index.html" />
+    <access origin="*" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <preference name="ScrollEnabled" value="false" />
+    <preference name="Fullscreen" value="false" />
+    <preference name="Orientation" value="default" />
+    <preference name="BackgroundColor" value="#ff0d1117" />
+    <!-- cordova-android 15 only compiles Kotlin when this is on; the
+         pyruntime plugin's Kotlin sources need it. -->
+    <preference name="GradlePluginKotlinEnabled" value="true" />
+    <platform name="android">
+        <allow-intent href="market:*" />
+        <preference name="AndroidXEnabled" value="true" />
+        <preference name="android-minSdkVersion" value="24" />
+        <preference name="android-targetSdkVersion" value="36" />
+        <!-- The system bars' look is controlled by the app's own CSS background. -->
+        <content src="index.html" />
+        <icon density="ldpi" src="res/android/mipmap-mdpi/ic_launcher.png" />
+        <icon density="mdpi" src="res/android/mipmap-mdpi/ic_launcher.png" />
+        <icon density="hdpi" src="res/android/mipmap-hdpi/ic_launcher.png" />
+        <icon density="xhdpi" src="res/android/mipmap-xhdpi/ic_launcher.png" />
+        <icon density="xxhdpi" src="res/android/mipmap-xxhdpi/ic_launcher.png" />
+        <icon density="xxxhdpi" src="res/android/mipmap-xxxhdpi/ic_launcher.png" />
+    </platform>
+    <plugin name="cordova-plugin-file" spec="^8.1.3" />
+    <plugin name="cordova-plugin-saf" spec="../src/native-plugins/cordova-plugin-saf" />
+    <plugin name="cordova-plugin-pyruntime" spec="../src/native-plugins/cordova-plugin-pyruntime" />
+</widget>

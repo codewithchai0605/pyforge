@@ -1,0 +1,19 @@
+# Packages baked into the APK at build time (installed by Chaquopy's pip).
+#
+# This is the officially supported way to ship packages that contain compiled
+# code (numpy, pandas, pillow, matplotlib, scipy, ...). Pure-Python packages
+# can also be installed later from inside the app (Packages page).
+#
+# The compiled packages below are commented out ON PURPOSE: if even one line
+# has no wheel for the app's Python version (python 3.13, see
+# src/native-plugins/cordova-plugin-pyruntime/src/android/pyruntime.gradle)
+# the whole Gradle build fails. Get a first build working, then uncomment
+# one at a time. Chaquopy's wheel index: https://chaquo.com/pypi-13.1/
+# (look for cp313 + android_* wheels), and PyPI itself now carries Android
+# wheels for some packages.
+#
+# Each compiled package adds roughly 10-40 MB per CPU architecture.
+
+# numpy
+# matplotlib
+# pillow

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    id="cordova-plugin-pyruntime"
+    version="0.1.0">
+
+    <name>PyRuntime</name>
+    <description>Embedded CPython (via Chaquopy): run scripts in an isolated process, stream output, GUI/turtle events, and a one-click package manager.</description>
+    <license>Apache-2.0</license>
+
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="PyRuntime">
+                <param name="android-package" value="com.pyforge.pyruntime.PyRuntimePlugin" />
+                <!-- Create the plugin at startup so Python is unpacked and
+                     warmed up before the first time the user taps Run. -->
+                <param name="onload" value="true" />
+            </feature>
+        </config-file>
+
+        <!-- Kotlin is opt-in in cordova-android 15. (Also set in the app's
+             own config.xml; both are harmless together.) -->
+        <config-file target="config.xml" parent="/*">
+            <preference name="GradlePluginKotlinEnabled" value="true" />
+        </config-file>
+
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <uses-permission android:name="android.permission.INTERNET" />
+        </config-file>
+
+        <!-- Two runner services, each in its own process, used alternately
+             (see PythonRunnerService.kt for why). -->
+        <config-file target="AndroidManifest.xml" parent="/manifest/application">
+            <service android:name="com.pyforge.pyruntime.PythonRunnerService0"
+                android:process=":python0" android:exported="false" />
+            <service android:name="com.pyforge.pyruntime.PythonRunnerService1"
+                android:process=":python1" android:exported="false" />
+        </config-file>
+
+        <!-- Kotlin sources. Note the explicit app/src/main/kotlin/... target:
+             for a .kt file, the legacy "src/<pkg>" form is NOT mapped to a
+             Gradle source directory by cordova-android (only .java is). -->
+        <source-file src="src/android/PyRuntimePlugin.kt" target-dir="app/src/main/kotlin/com/pyforge/pyruntime" />
+        <source-file src="src/android/PythonRunnerService.kt" target-dir="app/src/main/kotlin/com/pyforge/pyruntime" />
+        <source-file src="src/android/PySink.kt" target-dir="app/src/main/kotlin/com/pyforge/pyruntime" />
+
+        <!-- Python sources, picked up by Chaquopy from app/src/main/python.
+             (Generated from the file tree; tests/python/test_plugin_xml.py
+             fails if this list and the files ever disagree.) -->
+        <source-file src="src/android/python/pyforge/__init__.py" target-dir="app/src/main/python/pyforge" />
+        <source-file src="src/android/python/pyforge/api.py" target-dir="app/src/main/python/pyforge" />
+        <source-file src="src/android/python/pyforge/bootstrap.py" target-dir="app/src/main/python/pyforge" />
+        <source-file src="src/android/python/pyforge/core.py" target-dir="app/src/main/python/pyforge" />
+        <source-file src="src/android/python/pyforge/host.py" target-dir="app/src/main/python/pyforge" />
+        <source-file src="src/android/python/pyforge/pkgmgr.py" target-dir="app/src/main/python/pyforge" />
+        <source-file src="src/android/python/pyforge/runner.py" target-dir="app/src/main/python/pyforge" />
+        <source-file src="src/android/python/pyforge/shims/__init__.py" target-dir="app/src/main/python/pyforge/shims" />
+        <source-file src="src/android/python/pyforge/shims/pyforge_mpl.py" target-dir="app/src/main/python/pyforge/shims" />
+        <source-file src="src/android/python/pyforge/shims/turtle.py" target-dir="app/src/main/python/pyforge/shims" />
+        <source-file src="src/android/python/pyforge/tags.py" target-dir="app/src/main/python/pyforge" />
+
+        <!-- Applies the Chaquopy Gradle plugin and configures Python. -->
+        <framework src="src/android/pyruntime.gradle" custom="true" type="gradleReference" />
+    </platform>
+</plugin>

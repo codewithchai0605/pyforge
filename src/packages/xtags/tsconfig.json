@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "noEmit": true,
+
+    /* Classic JSX transform targeting xtags' own h()/Fragment — the same
+       config examples/app/esbuild.config.mjs's jsxFactory/jsxFragment
+       mirrors for the demo app. See test/jsx.test.tsx. */
+    "jsx": "react",
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment"
+  },
+  "include": ["src", "test"],
+  // test/fixtures/*.js and test/fixtures/*.ts are esbuild-only fixtures
+  // for test/jsx-in-plain-files.test.ts — they deliberately contain JSX
+  // syntax in non-.jsx/.tsx-extensioned files (that's what they're
+  // testing), which tsc's parser refuses unconditionally. They're built by
+  // esbuild inside that test, never by tsc, and nothing imports them via a
+  // TS `import` statement — only referenced as filesystem paths passed to
+  // esbuild. See esbuild.mjs's top comment and README.md's "JSX without
+  // .jsx/.tsx files" section for the full explanation.
+  "exclude": ["test/fixtures"]
+}

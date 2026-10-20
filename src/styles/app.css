@@ -1,0 +1,9 @@
+/* postcss-import inlines these before anything else runs (LightningCSS
+   prefixing/minification, then Rolldown emitting the asset); see
+   utils/build/plugins/css.ts. Partials, like Sass, without Sass. */
+@import './variables.css';
+@import './base.css';
+@import './shell.css';
+@import './components.css';
+@import './run.css';
+@import './pages.css';

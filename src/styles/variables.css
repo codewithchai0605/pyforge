@@ -1,0 +1,61 @@
+:root {
+  color-scheme: dark;
+
+  /* Surfaces, from the page background up to raised UI */
+  --bg: #0d1117;
+  --bg-editor: #11161d;
+  --bg-sunken: #0a0d12;
+  --bg-raised: #161c25;
+  --bg-hover: #1d2530;
+  --bg-active: #243040;
+  --border: #252e3a;
+  --border-strong: #35414f;
+
+  /* Text */
+  --text: #e6edf3;
+  --text-dim: #a1adba;
+  --text-faint: #6f7c8a;
+
+  /* Brand + semantic colours */
+  --accent: #5aa2ff;
+  --accent-strong: #3b86f0;
+  --on-accent: #06101f;
+  --py-yellow: #ffd43b;
+  --py-blue: #3776ab;
+  --success: #2ea043;
+  --success-text: #56d364;
+  --danger: #f85149;
+  --warn: #d29922;
+  --run: #2ea043;
+  --run-hover: #3fb950;
+
+  /* Shape + type */
+  --radius: 12px;
+  --radius-sm: 8px;
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+  --font-mono: ui-monospace, 'JetBrains Mono', 'Roboto Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  --editor-font-size: 15px;
+  --tap: 44px;
+  --titlebar-h: 56px;
+
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* ANSI palette used by the console (see src/python/ansi.ts) */
+  --ansi-0: #5c6573;
+  --ansi-1: #f7768e;
+  --ansi-2: #9ece6a;
+  --ansi-3: #e0af68;
+  --ansi-4: #7aa2f7;
+  --ansi-5: #bb9af7;
+  --ansi-6: #7dcfff;
+  --ansi-7: #c0caf5;
+  --ansi-8: #7c8798;
+  --ansi-9: #ff9aa2;
+  --ansi-10: #b9f27c;
+  --ansi-11: #ffd98a;
+  --ansi-12: #9dbbff;
+  --ansi-13: #d2b4ff;
+  --ansi-14: #a8e6ff;
+  --ansi-15: #ffffff;
+}

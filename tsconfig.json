@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Mixed JS/TS, as requested — .js files are allowed in src/ and are
+       loosely checked, new code should be written in .ts. */
+    "allowJs": true,
+    "checkJs": false,
+
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+
+    /* xtags is a plain factory function (h(type, props, ...children)), so
+       the classic JSX transform applies. This is the single JSX factory
+       configuration used by both TypeScript and Rolldown. */
+    "jsx": "react",
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment",
+
+    "paths": {
+      "@/*": ["./src/*"],
+      "xtags": ["./src/packages/xtags/src/index.ts"]
+    }
+  },
+  "include": ["src", "utils"],
+  "exclude": ["node_modules", "www", "platforms", "src/native-plugins"]
+}

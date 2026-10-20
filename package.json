@@ -1,0 +1,82 @@
+{
+  "name": "com.pyforge.app",
+  "displayName": "PyForge",
+  "version": "1.0.0",
+  "description": "A Python IDE for Android: Cordova + CodeMirror 6 UI, embedded CPython (Chaquopy), turtle/matplotlib output and a one-click package manager.",
+  "private": true,
+  "scripts": {
+    "dev": "tsx utils/scripts/dev.ts",
+    "dev:android": "tsx utils/scripts/dev.ts android",
+    "build": "npm run typecheck && tsx utils/scripts/build.ts",
+    "clean": "tsx utils/scripts/clean.ts",
+    "typecheck": "tsc --noEmit",
+    "smoke-test": "tsx utils/scripts/smoke-test.mts",
+    "test": "npm run test:ts && npm run test:app && npm run test:python",
+    "test:ts": "tsx --test tests/ts/*.test.ts",
+    "test:python": "python3 -m pytest tests/python -q",
+    "cordova:prepare": "npm run build && cordova prepare",
+    "cordova:run": "npm run build && cordova run android",
+    "cordova:build": "npm run build && cordova build android",
+    "test:app": "bun test src/fileSystem/test src/editorManager/test"
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "python",
+    "ide",
+    "android",
+    "chaquopy"
+  ],
+  "author": "PyForge",
+  "license": "Apache-2.0",
+  "browserslist": [
+    "ChromeAndroid >= 100"
+  ],
+  "devDependencies": {
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^26.2.0",
+    "@types/postcss-import": "^14.0.3",
+    "browserslist": "^4.28.8",
+    "chokidar": "^5.0.0",
+    "cordova": "^13.0.0",
+    "cordova-android": "^15.1.0",
+    "cordova-plugin-pyruntime": "file:src/native-plugins/cordova-plugin-pyruntime",
+    "cordova-plugin-saf": "file:src/native-plugins/cordova-plugin-saf",
+    "jsdom": "^27.0.0",
+    "lightningcss": "^1.33.0",
+    "postcss": "^8.5.26",
+    "postcss-import": "^17.0.0",
+    "rolldown": "^1.2.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.20.0",
+    "@codemirror/commands": "^6.11.0",
+    "@codemirror/lang-css": "^6.3.1",
+    "@codemirror/lang-html": "^6.4.12",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/theme-one-dark": "^6.1.3",
+    "@codemirror/view": "^6.43.9",
+    "codemirror": "^6.0.2",
+    "cordova-plugin-file": "^8.1.3"
+  },
+  "cordova": {
+    "plugins": {
+      "cordova-plugin-file": {
+        "ANDROIDX_WEBKIT_VERSION": "1.4.0"
+      },
+      "cordova-plugin-saf": {},
+      "cordova-plugin-pyruntime": {}
+    },
+    "platforms": [
+      "android"
+    ]
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}

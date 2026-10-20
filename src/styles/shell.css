@@ -1,0 +1,574 @@
+/* ---------- Layout ---------- */
+
+#app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  /* Keep clear of the Android status bar and gesture navigation. */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* ---------- Titlebar ---------- */
+
+#titlebar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--titlebar-h);
+  padding: 0 6px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+
+.title-block {
+  flex: 1;
+  min-width: 0;
+  padding: 0 6px;
+}
+
+.title-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#filename {
+  font-weight: 600;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#filepath {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dirty-dot,
+.tab-dirty-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--py-yellow);
+  flex: none;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.15s, transform 0.15s var(--ease);
+}
+
+.dirty-dot.visible,
+.tab-dirty-dot.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.run-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px 0 12px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--run);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset;
+  transition: background 0.15s, transform 0.1s, opacity 0.15s;
+}
+
+.run-btn:hover:not(:disabled) {
+  background: var(--run-hover);
+}
+
+.run-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.run-btn.stop {
+  background: var(--danger);
+}
+
+.run-btn:disabled {
+  opacity: 0.4;
+}
+
+/* ---------- Tabs ---------- */
+
+#tabs-bar {
+  display: flex;
+  flex: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--bg-sunken);
+  border-bottom: 1px solid var(--border);
+}
+
+#tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+#tabs-bar:empty {
+  display: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  max-width: 220px;
+  height: 40px;
+  padding: 0 4px 0 12px;
+  color: var(--text-dim);
+  border-right: 1px solid var(--border);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tab.active {
+  color: var(--text);
+  background: var(--bg-editor);
+  border-bottom-color: var(--accent);
+}
+
+.tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.tab-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+}
+
+.tab-close:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+/* ---------- Editor ---------- */
+
+.editor-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--bg-editor);
+}
+
+#editor-host {
+  position: absolute;
+  inset: 0;
+}
+
+#editor-host .cm-editor {
+  height: 100%;
+  background: var(--bg-editor);
+  font-size: var(--editor-font-size);
+}
+
+#editor-host .cm-gutters {
+  background: var(--bg-editor);
+  border-right: 1px solid var(--border);
+  color: var(--text-faint);
+}
+
+#editor-host .cm-activeLine,
+#editor-host .cm-activeLineGutter {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+#editor-host .cm-scroller {
+  font-family: var(--font-mono);
+  line-height: 1.6;
+  overflow: auto;
+}
+
+#editor-host .cm-content {
+  padding: 8px 0 40vh; /* room to scroll the last line above the keyboard */
+}
+
+#editor-host .cm-focused {
+  outline: none;
+}
+
+#editor-host .cm-tooltip-autocomplete {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow);
+}
+
+.empty-editor {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  background: var(--bg-editor);
+  color: var(--text-dim);
+}
+
+.empty-editor h2 {
+  color: var(--text);
+  font-size: 20px;
+}
+
+.empty-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--py-blue), #2b5a85);
+  color: var(--py-yellow);
+}
+
+.brand-mark.big {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+}
+
+/* ---------- Quick tools ---------- */
+
+#quick-tools {
+  flex: none;
+  background: var(--bg-raised);
+  border-top: 1px solid var(--border);
+  user-select: none;
+}
+
+.qt-row {
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.qt-row::-webkit-scrollbar {
+  display: none;
+}
+
+.qt-row + .qt-row {
+  border-top: 1px solid var(--border);
+}
+
+.qt-btn {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 36px;
+  height: 38px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 16px;
+}
+
+.qt-btn:active {
+  background: var(--bg-active);
+}
+
+.qt-wide {
+  min-width: 52px;
+  font-size: 13px;
+}
+
+.qt-toggle {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+}
+
+.qt-toggle.active {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Output takes the space when it is open. */
+#app.sheet-open #quick-tools,
+#app.sheet-expanded #tabs-bar {
+  display: none;
+}
+
+/* ---------- Status bar ---------- */
+
+#statusbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+  height: 26px;
+  padding: 0 10px;
+  background: var(--bg-sunken);
+  border-top: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.status-lang::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--py-yellow);
+}
+
+#status-right {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Drawer ---------- */
+
+.scrim,
+.menu-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.scrim {
+  background: rgba(0, 0, 0, 0.55);
+  transition: opacity 0.2s;
+}
+
+.scrim.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.menu-scrim {
+  z-index: 40;
+}
+
+.menu-scrim.show {
+  pointer-events: auto;
+}
+
+#drawer {
+  position: fixed;
+  z-index: 31;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(90vw, 380px);
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--bg-raised);
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transform: translateX(-102%);
+  visibility: hidden;
+  transition: transform 0.24s var(--ease), visibility 0s 0.24s;
+}
+
+#drawer.open {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.24s var(--ease), visibility 0s;
+}
+
+.drawer-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--titlebar-h);
+  padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.drawer-brand strong {
+  font-size: 17px;
+}
+
+.drawer-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 56px;
+  padding: 8px 6px;
+  background: var(--bg-sunken);
+  border-right: 1px solid var(--border);
+}
+
+.rail-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.rail-btn:hover {
+  background: var(--bg-hover);
+}
+
+.rail-btn.active {
+  background: var(--bg-active);
+  color: var(--accent);
+}
+
+.drawer-panels {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
+
+.drawer-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Overflow menu ---------- */
+
+.menu {
+  position: fixed;
+  z-index: 41;
+  top: calc(env(safe-area-inset-top) + var(--titlebar-h) - 4px);
+  right: 8px;
+  min-width: 210px;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow);
+  transform-origin: top right;
+  transform: scale(0.92);
+  opacity: 0;
+  visibility: hidden;
+  transition: transform 0.14s var(--ease), opacity 0.14s, visibility 0s 0.14s;
+}
+
+.menu.open {
+  transform: none;
+  opacity: 1;
+  visibility: visible;
+  transition: transform 0.14s var(--ease), opacity 0.14s, visibility 0s;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+}
+
+.menu-item:hover:not(:disabled),
+.menu-item:active:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.menu-item:disabled {
+  opacity: 0.4;
+}
+
+/* ---------- Toasts ---------- */
+
+.toast-host {
+  position: fixed;
+  z-index: 100;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom) + 70px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(92vw, 460px);
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: #1f2833;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s, transform 0.2s var(--ease);
+}
+
+.toast.show {
+  opacity: 1;
+  transform: none;
+}
+
+.toast-success svg {
+  color: var(--success-text);
+}
+
+.toast-error {
+  border-color: rgba(248, 81, 73, 0.5);
+}
+
+.toast-error svg {
+  color: var(--danger);
+}
