@@ -5,6 +5,10 @@ export interface Settings {
   fontSize: Signal<number>;
   clearConsoleOnRun: Signal<boolean>;
   saveOnRun: Signal<boolean>;
+  /** Write changed files shortly after typing stops. */
+  autoSave: Signal<boolean>;
+  /** Ask before leaving the app even when nothing is unsaved. */
+  confirmOnExit: Signal<boolean>;
 }
 
 const KEY = 'pyforge.settings.v1';
@@ -27,6 +31,8 @@ export function createSettings(): Settings {
     fontSize: signal(num(saved.fontSize, 15, 11, 26)),
     clearConsoleOnRun: signal(bool(saved.clearConsoleOnRun, true)),
     saveOnRun: signal(bool(saved.saveOnRun, true)),
+    autoSave: signal(bool(saved.autoSave, true)),
+    confirmOnExit: signal(bool(saved.confirmOnExit, true)),
   };
 
   const persist = (): void => {
@@ -37,6 +43,8 @@ export function createSettings(): Settings {
           fontSize: settings.fontSize.peek(),
           clearConsoleOnRun: settings.clearConsoleOnRun.peek(),
           saveOnRun: settings.saveOnRun.peek(),
+          autoSave: settings.autoSave.peek(),
+          confirmOnExit: settings.confirmOnExit.peek(),
         }),
       );
     } catch {
@@ -44,7 +52,7 @@ export function createSettings(): Settings {
     }
   };
   // Wrap each setter so any change persists. Signals notify only on real changes.
-  for (const s of [settings.fontSize, settings.clearConsoleOnRun, settings.saveOnRun] as Signal<unknown>[]) {
+  for (const s of Object.values(settings) as Signal<unknown>[]) {
     const original = s.set.bind(s);
     s.set = (next: unknown) => {
       original(next);

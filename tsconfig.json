@@ -5,6 +5,7 @@
     "module": "ESNext",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "moduleResolution": "bundler",
+    "moduleDetection": "force",
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -19,16 +20,12 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true,
-
-    /* xtags is a plain factory function (h(type, props, ...children)), so
-       the classic JSX transform applies. This is the single JSX factory
-       configuration used by both TypeScript and Rolldown. */
-    "jsx": "react",
-    "jsxFactory": "h",
-    "jsxFragmentFactory": "Fragment",
-
+    "jsx": "react-jsx",
+    "jsxImportSource": "xtags",
     "paths": {
       "@/*": ["./src/*"],
+      "xtags/jsx-runtime": ["./src/packages/xtags/src/jsx-runtime.ts"],
+      "xtags/jsx-dev-runtime": ["./src/packages/xtags/src/jsx-dev-runtime.ts"],
       "xtags": ["./src/packages/xtags/src/index.ts"]
     }
   },

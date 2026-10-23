@@ -4,7 +4,7 @@ A Python IDE for Android, built with Cordova. Write Python in a CodeMirror 6 edi
 run it on a real embedded CPython, see output / `input()` / **turtle graphics** /
 **matplotlib plots**, and install packages with one tap.
 
-* **Editor:** CodeMirror 6 with Python highlighting, 4-space indentation, completion
+* **Editor:** CodeMirror 6 with Python highlighting, auto-save, pinch-to-resize font, 4-space indentation, completion
   (keywords, builtins, module names, snippets), and a Python-symbol key strip above the
   keyboard (`: ( ) [ ] { } _ #`, Tab, arrow keys, undo/redo, comment toggle).
 * **Python:** CPython 3.13 via [Chaquopy](https://chaquo.com/chaquopy/) 17.1, run in an
@@ -14,7 +14,11 @@ run it on a real embedded CPython, see output / `input()` / **turtle graphics** 
   (Android has no Tk, so the real one can't work), and a matplotlib backend that turns
   `plt.show()` into an image.
 * **Packages:** a Packages page that installs/uninstalls from PyPI (pure-Python wheels, and
-  Android wheels where they exist) with live progress.
+  Android wheels where they exist) with live progress and a **Cancel** button that stops a
+  download on the fly without leaving anything half-installed.
+* **Navigation:** a real page stack (Home → Packages → Settings; Back returns to where you
+  came from) and an exit flow on Back from Home: a confirmation, or Save / Discard / Stay
+  when files are unsaved.
 * **Files:** an app-private workspace (real paths, so imports and file I/O work),
   rename/delete/new-from-template, find-in-files, and optionally an external folder via
   Android's Storage Access Framework.
@@ -68,7 +72,7 @@ Ctrl/Cmd+Enter = Run/Stop, Ctrl/Cmd+S = Save.
 ```bash
 npm test                  # everything below
 npm run test:python       # pytest: runner, turtle, matplotlib backend, package manager (fake PyPI)
-npm run test:ts           # ANSI parser, turtle scene, console view, app logic, TS<->Python e2e
+npm run test:ts           # ANSI parser, turtle scene, console view, navigation, app logic, TS<->Python e2e (incl. cancel)
 npm run test:app          # the original filesystem/editor tests (needs Bun)
 npm run build && npm run smoke-test   # drives the built UI against real Python in jsdom
 ```
@@ -107,9 +111,9 @@ otherwise). `PYFORGE_PYTHON` selects the interpreter for the TS tests.
 Everything below was built and tested in a Linux sandbox **without an Android SDK, device
 or emulator**.
 
-| Verified (automated, real execution) | Not verified (needs your first device build) |
+| Verified (automated, real execution) | Not verified on a device |
 |---|---|
-| All Python code: 52 pytest tests against a real host process, incl. a fake PyPI | The Gradle script (`pyruntime.gradle`) against real Chaquopy 17.1 / AGP |
+| All Python code: 56 pytest tests against a real host process, incl. a fake PyPI and cancellation | The Gradle script (`pyruntime.gradle`) against real Chaquopy 17.1 / AGP |
 | Kotlin: compiles with the real Kotlin 2.1.21 compiler *against stubs I wrote* of the Android/Cordova/Chaquopy APIs | The Kotlin against the real SDK jars; Chaquopy ⇄ Kotlin calls at runtime |
 | Cordova integration: the real Cordova 13 CLI generates the Android project correctly (sources, manifest, services, Gradle hook, icons) | Binder messaging, process kill/restart, Python start-up time on a phone |
 | TS ⇄ Python end to end (run, `input()`, stop, turtle, matplotlib, pip) via the dev bridge | The Cordova bridge path (`cordovaRuntime`) on a device |
@@ -122,6 +126,12 @@ Known limits and risks:
   build to exist, and their shared-library dependencies (`chaquopy/lib/*.so`) are pre-loaded
   via `ctypes`, which I could not test on a device. Bundle important compiled packages in
   `python/requirements.txt` instead.
+* **Seen working on a real phone** (user's screenshots): app start, Python 3.13 on arm64, run/console,
+  the Packages page and a PyPI install starting. **Not yet confirmed on a device:** the inset
+  measurement that removes the blank band under the status bar, native zoom disabling, Cancel on a
+  real download, and the Android Back chain.
+* **No terminal yet.** A real terminal (xterm.js + native PTY + Debian/Ubuntu via proot) is designed
+  and researched but intentionally not built; see DEVELOPMENT.md.
 * **No `tkinter`.** `import tkinter` raises a clear ImportError. Use `turtle` or matplotlib.
   pygame/Kivy-style apps aren't supported.
 * **turtle differences:** `undo()` restores position/heading but doesn't erase drawings;
@@ -152,6 +162,10 @@ installed to `app/src/main/src/...`, which Gradle never compiles. Use
 a local `HTMLElementAttributes` alias in `jsx-runtime.ts` were adapted, because this project
 doesn't depend on `acode-plugin-types`.
 
+The UI is written in **TSX** using xtags' automatic JSX runtime (`jsx: react-jsx`,
+`jsxImportSource: xtags`); `consoleView.ts` and `displayView.ts` stay as imperative DOM classes on
+purpose (they handle tens of thousands of lines/frames).
+
 Scripts now use `tsx` instead of Bun, so a plain `npm` workflow works (Bun still works; it is
 only needed for `npm run test:app`).
 
@@ -168,5 +182,7 @@ src/                             the web app (TypeScript)
   native-plugins/cordova-plugin-pyruntime/   Kotlin + Chaquopy + the `pyforge` Python package
   native-plugins/cordova-plugin-saf/         Storage Access Framework (Java)
 tests/{python,ts}/               test suites
-utils/                           build scripts, dev server, desktop Python bridge
+utils/                           build scripts, dev server, desktop Python bridge,
+                                 dev-tools/ (screenshot rig, Kotlin stub checker)
+DEVELOPMENT.md                   progress, dev setup, decisions, terminal research (read this first)
 ```

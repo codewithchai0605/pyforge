@@ -12,6 +12,9 @@ import android.os.Message
 import android.os.Handler
 import android.os.Messenger
 import android.os.Process
+import android.webkit.WebView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import org.apache.cordova.CallbackContext
@@ -77,6 +80,7 @@ class PyRuntimePlugin : CordovaPlugin() {
     // ------------------------------------------------------------------ setup
 
     override fun pluginInitialize() {
+        disableWebViewZoom()
         // Start (and, on first launch, unpack) Python off the UI thread so app
         // start-up isn't delayed. Everything that needs Python waits on the latch.
         cordova.threadPool.execute {
@@ -98,6 +102,55 @@ class PyRuntimePlugin : CordovaPlugin() {
     override fun onDestroy() {
         killRun()
         super.onDestroy()
+    }
+
+    /**
+     * Pinch/double-tap page zoom would scale the whole UI and break the layout.
+     * The viewport meta tag already says "no zoom", but WebView only honours it
+     * in some configurations, so turn it off at the source too. (Pinch inside
+     * the editor changes the *font size* instead; see src/editor/pinchZoom.ts.)
+     */
+    private fun disableWebViewZoom() {
+        cordova.activity.runOnUiThread {
+            (webView.view as? WebView)?.settings?.apply {
+                setSupportZoom(false)
+                setBuiltInZoomControls(false)
+                setDisplayZoomControls(false)
+            }
+        }
+    }
+
+    /**
+     * How much padding (CSS px) the page must add for the system bars.
+     *
+     * cordova-android 15 draws edge-to-edge but already insets the WebView by
+     * the bars' size, so the page usually needs none. Reporting `env(safe-area-
+     * inset-*)` on top of that doubled the gap at the top and bottom. This
+     * measures the *remaining* overlap: the bar size minus how far the WebView
+     * is already pushed in from that edge.
+     */
+    private fun measureInsets(cb: CallbackContext) {
+        cordova.activity.runOnUiThread {
+            try {
+                val view = webView.view
+                val loc = IntArray(2)
+                view.getLocationOnScreen(loc)
+                val bars = ViewCompat.getRootWindowInsets(view)
+                    ?.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                val density = context.resources.displayMetrics.density
+                val rootW = view.rootView.width
+                val rootH = view.rootView.height
+                fun css(px: Int): Double = Math.max(0, px) / density.toDouble()
+                val out = JSONObject()
+                out.put("top", css((bars?.top ?: 0) - loc[1]))
+                out.put("bottom", css((bars?.bottom ?: 0) - (rootH - (loc[1] + view.height))))
+                out.put("left", css((bars?.left ?: 0) - loc[0]))
+                out.put("right", css((bars?.right ?: 0) - (rootW - (loc[0] + view.width))))
+                cb.success(out)
+            } catch (t: Throwable) {
+                cb.error(t.message ?: t.javaClass.simpleName)
+            }
+        }
     }
 
     private class Dirs(val home: String, val site: String, val projects: String, val cache: String)
@@ -157,6 +210,13 @@ class PyRuntimePlugin : CordovaPlugin() {
             }
             "stop" -> {
                 killRun()
+                callbackContext.success()
+            }
+            "insets" -> measureInsets(callbackContext)
+            "pipCancel" -> {
+                // Cooperative: Python checks the flag between network reads and
+                // before it touches site-packages, so cancelling is always clean.
+                if (Python.isStarted()) Python.getInstance().getModule("pyforge.api").callAttr("cancel_pip")
                 callbackContext.success()
             }
             "pip" -> {

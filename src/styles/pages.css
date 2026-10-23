@@ -6,8 +6,8 @@
   z-index: 50;
   display: flex;
   flex-direction: column;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-top: var(--inset-top, 0px);
+  padding-bottom: var(--inset-bottom, 0px);
   background: var(--bg);
   transform: translateX(100%);
   visibility: hidden;
@@ -18,6 +18,21 @@
   transform: none;
   visibility: visible;
   transition: transform 0.26s var(--ease), visibility 0s;
+}
+
+/* A page with another page pushed on top: it stays mounted (scroll position,
+   typed text) but slides back a little, like a native navigation stack. */
+.page.covered {
+  transform: translateX(-18%);
+  transition: transform 0.26s var(--ease);
+  filter: brightness(0.7);
+}
+
+.page-body.flush {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .page-header {
@@ -294,5 +309,25 @@
   gap: 2px;
   margin-top: 16px;
   color: var(--text-dim);
+  font-size: 13px;
+}
+
+.settings-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  padding: 0 14px;
+}
+
+.settings-group .setting-row:last-child {
+  border-bottom: 0;
+}
+
+.setting-hint.plain {
+  font-family: var(--font-ui);
+}
+
+.settings-tip {
+  margin: 8px 2px 0;
   font-size: 13px;
 }

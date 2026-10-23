@@ -39,6 +39,9 @@ export function createInputOptions(entry: EntryName, { isProd }: BuildFlags): In
         // Matches tsconfig.json's "paths" — Rolldown doesn't read tsconfig
         // paths automatically, so both have to be kept in sync by hand.
         '@': path.resolve(ROOT, 'src'),
+        // Order matters: the specific JSX-runtime subpaths must win over the bare package alias.
+        'xtags/jsx-runtime': path.resolve(ROOT, 'src/packages/xtags/src/jsx-runtime.ts'),
+        'xtags/jsx-dev-runtime': path.resolve(ROOT, 'src/packages/xtags/src/jsx-dev-runtime.ts'),
         xtags: path.resolve(ROOT, 'src/packages/xtags/src/index.ts'),
       },
     },

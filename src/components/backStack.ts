@@ -1,12 +1,17 @@
 /**
- * Android's hardware/gesture Back should dismiss the top-most transient UI
- * (dialog, menu, sheet, drawer) before it does anything else, and only exit
- * the app when nothing is open. Every such surface registers a closer here
- * while it is open.
+ * Android's Back button, as one ordered chain of "who handles it":
+ *
+ *   1. transient surfaces (dialog, menu, drawer, output sheet): the most
+ *      recently opened one closes. They register with `pushBack()` while open.
+ *   2. the root handler, set once by the app: pops a page off the navigation
+ *      stack, or, on Home, starts the exit flow (unsaved files, confirmation).
+ *
+ * So Back never skips a layer: dialog → sheet/drawer → page → Home → exit.
  */
 type Closer = () => void;
 
 const stack: Closer[] = [];
+let root: () => void = () => {};
 
 /** Registers `close` as the thing Back should do next. Returns an unregister function. */
 export function pushBack(close: Closer): () => void {
@@ -17,12 +22,22 @@ export function pushBack(close: Closer): () => void {
   };
 }
 
-/** Handles one Back press. Returns true if something was closed. */
+/** What Back does when no transient surface is open. */
+export function setRootBackHandler(handler: () => void): void {
+  root = handler;
+}
+
+/** Handles one Back press. Returns true if a transient surface was closed (the root handler is not involved). */
 export function handleBack(): boolean {
   const close = stack.pop();
   if (!close) return false;
   close();
   return true;
+}
+
+/** The full chain: a transient surface if one is open, otherwise the root handler. */
+export function dispatchBack(): void {
+  if (!handleBack()) root();
 }
 
 export function backDepth(): number {

@@ -36,6 +36,7 @@ class FakeIndex:
         self.pypi: dict[str, list[tuple[str, bytes]]] = {}
         self.chaquo: dict[str, list[tuple[str, bytes]]] = {}
         self.corrupt: set[str] = set()
+        self.slow: set[str] = set()  # filenames served in small, delayed chunks
         self.hits: list[str] = []
 
     def add(self, store, name, fname, data):
@@ -71,8 +72,24 @@ class FakeIndex:
                         for files in store.values():
                             for f, d in files:
                                 if f == parts[1]:
+                                    if f in outer.slow:
+                                        return self._send_slowly(d)
                                     return self._send(200, (b"garbage" if f in outer.corrupt else d))
                 self._send(404, b"")
+
+            def _send_slowly(self, body):
+                import time as _t
+
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                try:
+                    for i in range(0, len(body), 2048):
+                        self.wfile.write(body[i : i + 2048])
+                        self.wfile.flush()
+                        _t.sleep(0.15)
+                except OSError:
+                    pass  # the client gave up (that is the point of the test)
 
             def _send(self, code, body, ctype="application/octet-stream"):
                 self.send_response(code)
@@ -250,3 +267,103 @@ def test_progress_events(env):
     pkgmgr.install(["lib"], events.append)
     assert any(e["t"] == "dl" and e["done"] == e["total"] for e in events)
     assert events[-1] == {"t": "log", "s": "Done."}
+
+
+# ----------------------------------------------------------- cancellation
+
+
+def _big_wheel(name, version):
+    """A wheel large enough that the slow server takes seconds to send it."""
+    import random
+
+    rnd = random.Random(7)
+    payload = bytes(rnd.getrandbits(8) for _ in range(120_000))  # incompressible
+    return make_wheel(name, version, files={f"{name}/__init__.py": "", f"{name}/blob.bin": payload.decode("latin-1")})
+
+
+def test_cancel_during_download_installs_nothing_and_removes_partial_file(env, tmp_path):
+    fname, data = _big_wheel("bulky", "1.0")
+    env.add("pypi", "bulky", fname, data)
+    env.slow.add(fname)
+
+    started = threading.Event()
+
+    def progress(event):
+        if event.get("t") == "dl" and event["done"] > 0:
+            started.set()
+
+    threading.Timer(0.01, lambda: None).start()
+    result = {}
+
+    def work():
+        try:
+            pkgmgr.install(["bulky"], progress)
+        except BaseException as e:  # noqa: BLE001
+            result["error"] = e
+
+    t = threading.Thread(target=work)
+    t0 = __import__("time").time()
+    t.start()
+    assert started.wait(10), "download never started"
+    pkgmgr.request_cancel()
+    t.join(10)
+    assert not t.is_alive(), "install did not stop after cancel"
+    assert isinstance(result.get("error"), pkgmgr.Cancelled)
+    assert __import__("time").time() - t0 < 8  # stopped long before the slow download could finish
+
+    site = tmp_path / "site"
+    assert not site.exists() or os.listdir(site) == []
+    cache = tmp_path / "cache" / "wheels"
+    assert not any(n.endswith(".part") for n in os.listdir(cache))
+    assert pkgmgr.list_installed() == []
+
+
+def test_cancel_flag_is_reset_for_the_next_operation(env):
+    env.add("pypi", "lib", *make_wheel("lib", "1.0"))
+    pkgmgr.request_cancel()  # a stale cancel from a previous operation
+    assert pkgmgr.install(["lib"])["installed"][0]["name"] == "lib"
+
+
+def test_cancel_between_packages_leaves_dependencies_uninstalled(env, tmp_path):
+    """Dependencies are downloaded before anything is unpacked, so cancelling
+    while fetching the second package must not leave the first one half-installed."""
+    env.add("pypi", "app", *make_wheel("app", "1.0", requires=["dep"]))
+    fname, data = _big_wheel("dep", "1.0")
+    env.add("pypi", "dep", fname, data)
+    env.slow.add(fname)
+    seen = threading.Event()
+
+    def progress(event):
+        if event.get("t") == "dl" and "dep" in event.get("file", "") and event["done"] > 0:
+            seen.set()
+
+    err = {}
+    t = threading.Thread(target=lambda: err.setdefault("e", _capture(lambda: pkgmgr.install(["app"], progress))))
+    t.start()
+    assert seen.wait(10)
+    pkgmgr.request_cancel()
+    t.join(10)
+    assert isinstance(err["e"], pkgmgr.Cancelled)
+    assert pkgmgr.list_installed() == []
+
+
+def test_api_reports_cancel_as_a_distinct_result(env):
+    from pyforge import api
+
+    class Sink:
+        def emit(self, line):
+            pass
+
+    fname, data = _big_wheel("bulky2", "1.0")
+    env.add("pypi", "bulky2", fname, data)
+    env.slow.add(fname)
+    threading.Timer(0.6, api.cancel_pip).start()
+    out = json.loads(api.pip_call(Sink(), "install", json.dumps({"specs": ["bulky2"]})))
+    assert out == {"ok": False, "cancelled": True, "error": "Cancelled"}
+
+
+def _capture(fn):
+    try:
+        fn()
+    except BaseException as e:  # noqa: BLE001
+        return e

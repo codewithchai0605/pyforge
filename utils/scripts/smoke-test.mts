@@ -87,7 +87,11 @@ async function waitFor<T>(what: string, probe: () => T | null | undefined | fals
 const $ = <T extends Element = HTMLElement>(sel: string) => doc.querySelector<T>(sel);
 const consoleText = () => [...doc.querySelectorAll('.console-log .cl')].map((l) => l.textContent).join('\n');
 const status = () => $('.status-chip')?.textContent ?? '';
-const pf = () => (window as unknown as { pyforge: { editorManager: any; runPanel: any } }).pyforge;
+const pf = () => (window as unknown as { pyforge: { editorManager: any; runPanel: any; router: any } }).pyforge;
+/** What Android does when the Back button is pressed. */
+const pressBack = () => doc.dispatchEvent(new window.Event('backbutton'));
+const dialogText = () => $('.dialog')?.textContent ?? '';
+const clickButton = (label: string) => [...doc.querySelectorAll<HTMLButtonElement>('.dialog button')].find((b) => b.textContent === label)!.click();
 
 async function step(name: string, fn: () => Promise<void>): Promise<void> {
   try {
@@ -167,6 +171,50 @@ await step('the drawer lists workspace files; the overflow menu opens the Packag
   [...doc.querySelectorAll<HTMLButtonElement>('.menu-item')].find((b) => b.textContent === 'Packages')!.click();
   await waitFor('packages page open', () => $('#packages-page.open'));
   await waitFor('popular list', () => doc.querySelectorAll('.pkg-card').length >= 8);
+});
+
+await step('page zoom is disabled', async () => {
+  const viewport = $('meta[name=viewport]')!.getAttribute('content')!;
+  if (!/user-scalable=no/.test(viewport) || !/maximum-scale=1/.test(viewport)) throw new Error(`viewport allows zoom: ${viewport}`);
+});
+
+await step('Back walks the navigation stack: Settings opened from Packages returns to Packages, then Home', async () => {
+  // We are on the Packages page (previous step). Open Settings from its gear.
+  $<HTMLButtonElement>('#packages-page button[aria-label="Settings"]')!.click();
+  await waitFor('settings on top', () => pf().router.stack.peek().join() === 'home,packages,settings' && $('#settings-page.open'));
+  pressBack();
+  await waitFor('back to packages', () => pf().router.stack.peek().join() === 'home,packages');
+  if (!$('#packages-page.open')) throw new Error('packages page closed');
+  pressBack();
+  await waitFor('back to home', () => pf().router.stack.peek().join() === 'home');
+  await waitFor('packages hidden', () => !$('#packages-page.open'));
+});
+
+await step('Back on Home asks to exit; Back again dismisses the dialog and stays', async () => {
+  // Make sure nothing is unsaved: wait out auto-save and leave the output sheet closed.
+  pf().runPanel.hide();
+  await waitFor('files saved', () => !pf().editorManager.activeFiles.peek().some((f: any) => f.dirty.peek()), 8000);
+  pressBack();
+  await waitFor('exit dialog', () => /Exit PyForge\?/.test(dialogText()));
+  pressBack(); // Back closes the dialog, it does not exit
+  await waitFor('dialog gone', () => !$('.dialog'));
+});
+
+await step('unsaved changes: exit offers Save / Discard / Stay, and Stay keeps the file open', async () => {
+  const view = pf().editorManager.editor;
+  view.dispatch({ changes: { from: 0, insert: '# edited\n' } });
+  await waitFor('dirty', () => pf().editorManager.activeFile.peek().dirty.peek());
+  pressBack();
+  await waitFor('unsaved dialog', () => /Unsaved changes/.test(dialogText()) && /main\.py/.test(dialogText()));
+  const labels = [...doc.querySelectorAll('.dialog button')].map((b) => b.textContent);
+  if (labels.join('|') !== 'Save and exit|Discard and exit|Stay') throw new Error(`buttons: ${labels.join('|')}`);
+  clickButton('Stay');
+  await waitFor('dialog gone', () => !$('.dialog'));
+  if (pf().editorManager.activeFiles.peek().length !== 1) throw new Error('file closed');
+});
+
+await step('auto-save writes the edit shortly after typing stops', async () => {
+  await waitFor('saved', () => !pf().editorManager.activeFile.peek().dirty.peek(), 6000);
 });
 
 window.close();

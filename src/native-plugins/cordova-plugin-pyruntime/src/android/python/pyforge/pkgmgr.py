@@ -27,6 +27,7 @@ import re
 import shutil
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -50,11 +51,30 @@ PYPI_URL = os.environ.get("PYFORGE_PYPI_URL", "https://pypi.org/simple/")
 # Chaquopy's curated index of Android builds (numpy, pandas, pillow, ...).
 CHAQUO_URL = os.environ.get("PYFORGE_CHAQUO_URL", "https://chaquo.com/pypi-13.1/")
 USER_AGENT = "PyForge/0.1 (+package-manager)"
-TIMEOUT = 30
+TIMEOUT = 15  # per socket operation; also bounds how long a Cancel can wait on a stalled connection
 
 
 class PkgError(Exception):
     """A problem worth showing to the user verbatim."""
+
+
+class Cancelled(PkgError):
+    """The user cancelled the operation. Nothing was installed or changed."""
+
+
+# One package operation runs at a time (the Kotlin side serialises them), so a
+# single process-wide flag is enough. It is set from another thread (the
+# Cancel button) and polled at every network step.
+_cancel = threading.Event()
+
+
+def request_cancel() -> None:
+    _cancel.set()
+
+
+def _check_cancel() -> None:
+    if _cancel.is_set():
+        raise Cancelled("Cancelled")
 
 
 # ---------------------------------------------------------------- helpers
@@ -81,6 +101,7 @@ def _open(url: str, accept: Optional[str] = None):
     req = urllib.request.Request(url, headers=headers)
     last: Optional[Exception] = None
     for attempt in range(3):
+        _check_cancel()
         try:
             return urllib.request.urlopen(req, timeout=TIMEOUT)
         except urllib.error.HTTPError as e:
@@ -410,19 +431,32 @@ def _download(wheel: WheelFile, progress: Progress) -> str:
     sha = hashlib.sha256()
     done = 0
     last = 0.0
-    with _open(wheel.url) as resp, open(tmp, "wb") as out:
-        total = int(resp.headers.get("Content-Length") or wheel.size or 0)
-        while True:
-            chunk = resp.read(64 * 1024)
-            if not chunk:
-                break
-            out.write(chunk)
-            sha.update(chunk)
-            done += len(chunk)
-            now = time.time()
-            if now - last > 0.1:
-                last = now
-                progress({"t": "dl", "file": wheel.filename, "done": done, "total": total})
+    try:
+        with _open(wheel.url) as resp, open(tmp, "wb") as out:
+            total = int(resp.headers.get("Content-Length") or wheel.size or 0)
+            while True:
+                _check_cancel()
+                # read1(), not read(): read(n) waits for all n bytes, which on a
+                # slow link would make the progress bar and Cancel respond only
+                # every few seconds. read1() returns as soon as *some* data arrived.
+                chunk = resp.read1(64 * 1024)
+                if not chunk:
+                    break
+                out.write(chunk)
+                sha.update(chunk)
+                done += len(chunk)
+                now = time.time()
+                if now - last > 0.1:
+                    last = now
+                    progress({"t": "dl", "file": wheel.filename, "done": done, "total": total})
+    except BaseException:
+        # Cancelled, offline, or anything else: never leave a truncated file
+        # behind that a later run might mistake for a download in progress.
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
     progress({"t": "dl", "file": wheel.filename, "done": done, "total": done})
     if wheel.sha256 and sha.hexdigest() != wheel.sha256.lower():
         os.remove(tmp)
@@ -544,6 +578,7 @@ def _record_native_libs(site: str, dist_info: str) -> None:
 
 def install(specs: list[str], progress: Progress = lambda e: None) -> dict:
     site = _site()
+    _cancel.clear()
     log = lambda s: progress({"t": "log", "s": s})  # noqa: E731
     requested = [_parse_req(s) for s in specs]
 
@@ -556,6 +591,7 @@ def install(specs: list[str], progress: Progress = lambda e: None) -> dict:
     skipped: list[str] = []
 
     while queue:
+        _check_cancel()
         req = queue.pop(0)
         key = canonicalize_name(req.name)
         wanted[key] = wanted.get(key, SpecifierSet()) & req.specifier
@@ -593,6 +629,10 @@ def install(specs: list[str], progress: Progress = lambda e: None) -> dict:
         chosen[key] = (pick, local)
         queue.extend(_wheel_requirements(local, extras[key]))
 
+    # Last chance to back out: everything is downloaded and verified, nothing
+    # has touched site-packages yet. Past this point the (fast, local) unpack
+    # runs to completion so we never leave a half-installed package.
+    _check_cancel()
     for key, (wheel, local) in chosen.items():
         log(f"Installing {key} {wheel.version}")
         name, version = _unpack(local, site)

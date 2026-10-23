@@ -3,17 +3,19 @@ import { EditorManager } from '@/editorManager';
 import { fsOperation } from '@/fileSystem';
 import { createRuntime } from '@/native/pyruntime';
 import type { GuiEvent, PyEvent, RunHandle, RuntimeInfo } from '@/python/protocol';
+import { attachPinchZoom } from '@/editor/pinchZoom';
+import { createRouter } from '@/navigation';
 import { createSettings, loadSession, saveSession } from '@/settings';
 import { createWorkspace } from '@/workspace';
 import { createAppShell, type DrawerTab } from '@/components/appShell';
-import { handleBack } from '@/components/backStack';
-import { confirmDialog } from '@/components/dialogs';
+import { dispatchBack, setRootBackHandler } from '@/components/backStack';
+import { choiceDialog, confirmDialog } from '@/components/dialogs';
 import { createFileBrowser } from '@/components/fileBrowser';
-import { createPackagesPage } from '@/components/packagesPage';
+import { PackagesPage } from '@/components/packagesPage';
 import { createQuickTools } from '@/components/quickTools';
 import { createRunPanel } from '@/components/runPanel';
 import { createSearchPanel } from '@/components/searchPanel';
-import { showSettings } from '@/components/settingsSheet';
+import { SettingsPage } from '@/components/settingsPage';
 import { createTabsBar } from '@/components/tabsBar';
 import { toast } from '@/components/toast';
 
@@ -26,6 +28,7 @@ async function start(): Promise<void> {
   const drawerOpen = signal(false);
   const drawerTab = signal<DrawerTab>('files');
   const menuOpen = signal(false);
+  const router = createRouter();
 
   // ---- Python runtime + workspace ---------------------------------------
   const readBase64 = (path: string): Promise<string> => fsOperation(`file://${encodeURI(path)}`).readFile('base64');
@@ -36,6 +39,22 @@ async function start(): Promise<void> {
   } catch {
     /* "none" backend, or Python failed to start: Run reports the reason */
   }
+  // The page must pad for system bars only where the WebView isn't already
+  // inset from them; the native side measures that (env(safe-area-inset-*)
+  // would double-count and leave a blank band under the status bar).
+  const applyInsets = async (): Promise<void> => {
+    const insets = await runtime.insets();
+    const root = document.documentElement.style;
+    for (const side of ['top', 'bottom', 'left', 'right'] as const) {
+      root.setProperty(`--inset-${side}`, `${Math.round((insets?.[side] ?? 0) * 100) / 100}px`);
+    }
+  };
+  await applyInsets();
+  let insetTimer: ReturnType<typeof setTimeout> | undefined;
+  window.addEventListener('resize', () => {
+    clearTimeout(insetTimer);
+    insetTimer = setTimeout(() => void applyInsets(), 250);
+  });
   const workspace = await createWorkspace(runtime, info);
   const runtimeLabel = signal(info ? `Python ${info.python}` : runtime.kind === 'none' ? 'Python unavailable' : 'Python');
 
@@ -55,6 +74,15 @@ async function start(): Promise<void> {
     () => settings.fontSize(),
     (size) => document.documentElement.style.setProperty('--editor-font-size', `${size}px`),
   );
+  attachPinchZoom(editorHost, { getSize: () => settings.fontSize.peek(), setSize: (n) => settings.fontSize.set(n) });
+
+  // Auto-save: a moment after typing stops. (Run, pause and exit also save.)
+  let autosaveTimer: ReturnType<typeof setTimeout> | undefined;
+  editorManager.onUpdate(() => {
+    if (!settings.autoSave.peek()) return;
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => void editorManager.saveAll(), 1500);
+  });
 
   const openFile = async (url: string, name: string, path: string | null = null): Promise<void> => {
     try {
@@ -202,7 +230,53 @@ async function start(): Promise<void> {
     editorManager.closeFile(file.id);
   };
 
-  const packagesPage = createPackagesPage(runtime, info);
+  const pages: Node[] = [
+    PackagesPage({ router, runtime, info }),
+    SettingsPage({ router, settings, info }),
+  ];
+
+  // ---- leaving the app ---------------------------------------------------------
+  /** Back on Home: confirm, handle unsaved files, stop anything running, then exit. */
+  async function requestExit(): Promise<void> {
+    const unsaved = editorManager.activeFiles.peek().filter((f) => f.dirty.peek());
+    const busy = runPanel.running.peek();
+    const note = busy ? ' A running program will be stopped.' : '';
+
+    if (unsaved.length > 0) {
+      const names = unsaved.map((f) => f.name);
+      const shown = names.length > 3 ? `${names.slice(0, 3).join(', ')} and ${names.length - 3} more` : names.join(', ');
+      const choice = await choiceDialog<'save' | 'discard'>({
+        title: 'Unsaved changes',
+        message: `${shown} ${names.length === 1 ? 'has' : 'have'} unsaved changes.${note}`,
+        choices: [
+          { label: 'Save and exit', value: 'save', kind: 'primary' },
+          { label: 'Discard and exit', value: 'discard', kind: 'danger' },
+          { label: 'Stay', value: undefined as never },
+        ],
+      });
+      if (!choice) return;
+      if (choice === 'save') {
+        const { failed } = await editorManager.saveAll();
+        if (failed.length) {
+          toast(`Could not save ${failed.join(', ')}. Not exiting.`, 'error');
+          return;
+        }
+      }
+    } else if (settings.confirmOnExit.peek()) {
+      const ok = await confirmDialog({ title: 'Exit PyForge?', message: `Press Exit to close the app.${note}`, confirmLabel: 'Exit' });
+      if (!ok) return;
+    }
+
+    await stop();
+    const app = (navigator as Navigator & { app?: { exitApp(): void } }).app;
+    if (app) app.exitApp();
+    else toast('Exit is only available in the Android app.', 'info');
+  }
+
+  // The whole Back chain: dialog → sheet/drawer/menu → page → Home → exit.
+  setRootBackHandler(() => {
+    if (!router.pop()) void requestExit();
+  });
 
   // ---- assemble ----------------------------------------------------------------
   const app = createAppShell({
@@ -213,7 +287,8 @@ async function start(): Promise<void> {
     tabsBar: createTabsBar(editorManager),
     quickTools: createQuickTools(editorManager),
     runPanel,
-    packagesPage,
+    router,
+    pages,
     statusLeft,
     statusRight,
     runtimeLabel,
@@ -225,7 +300,6 @@ async function start(): Promise<void> {
     onSave: () => void save(),
     onNewFile: () => void fileBrowser.createFile(),
     onOpenRepl: () => void openRepl(),
-    onOpenSettings: () => void showSettings(settings, info),
     onCloseFile: () => void closeActiveFile(),
     describeFile: (file) => {
       const rel = file.url ? workspace.relativePath(file.url) : null;
@@ -283,13 +357,10 @@ async function start(): Promise<void> {
     if (document.visibilityState === 'hidden') flush();
   });
 
-  document.addEventListener('backbutton', () => {
-    if (handleBack()) return;
-    (navigator as Navigator & { app?: { exitApp(): void } }).app?.exitApp();
-  });
+  document.addEventListener('backbutton', dispatchBack);
   document.addEventListener('keydown', (e) => {
     // Desktop preview: Esc plays the role of Back.
-    if (e.key === 'Escape' && !e.defaultPrevented) handleBack();
+    if (e.key === 'Escape' && !e.defaultPrevented) dispatchBack();
     // Ctrl/Cmd+Enter runs/stops, Ctrl/Cmd+S saves (desktop preview, Bluetooth keyboards).
     if (!(e.ctrlKey || e.metaKey)) return;
     if (e.key === 'Enter') {
@@ -302,7 +373,7 @@ async function start(): Promise<void> {
   });
 
   // A handle for DevTools and the automated UI smoke test (utils/scripts/smoke-test.ts).
-  Object.assign(window, { pyforge: { editorManager, runPanel, workspace, runtime } });
+  Object.assign(window, { pyforge: { editorManager, runPanel, workspace, runtime, router } });
 
   if (editorManager.activeFile.peek()) editorManager.editor.focus();
 }

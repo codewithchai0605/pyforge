@@ -203,7 +203,7 @@
   .dialog-sheet {
     width: 100%;
     border-radius: 18px 18px 0 0;
-    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    padding-bottom: calc(20px + var(--inset-bottom, 0px));
   }
 }
 
@@ -450,4 +450,15 @@
   background: rgba(255, 212, 59, 0.28);
   color: inherit;
   border-radius: 3px;
+}
+
+.dialog-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.dialog-stack .btn {
+  width: 100%;
 }

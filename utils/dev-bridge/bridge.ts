@@ -12,7 +12,8 @@
  *   GET  /__py/ping                 -> RuntimeInfo
  *   POST /__py/run                  -> NDJSON event stream (header x-run-id)
  *   POST /__py/runs/:id/stdin|gui|stop
- *   POST /__py/pip                  -> NDJSON progress, last line {"t":"result"}
+ *   POST /__py/pip                  -> NDJSON progress, last line {"t":"result"} (header x-pip-id)
+ *   POST /__py/pip/:id/cancel
  *   GET  /__py/plot?path=...        -> a PNG the program saved (cache dir only)
  */
 import { spawn, execFileSync, type ChildProcessWithoutNullStreams } from 'node:child_process';
@@ -58,6 +59,7 @@ export function createBridge(options: BridgeOptions = {}): (req: IncomingMessage
   const env = { ...process.env, PYTHONPATH: pythonSrc, PYTHONUNBUFFERED: '1' };
   const hostArgs = ['-u', '-m', 'pyforge.host', '--home', dirs.home, '--site', dirs.site, '--projects', dirs.projects, '--cache', dirs.cache];
   const runs = new Map<string, ChildProcessWithoutNullStreams>();
+  const pips = new Map<string, ChildProcessWithoutNullStreams>();
   let versionCache: string | null = null;
 
   const pythonVersion = (): string => {
@@ -142,11 +144,22 @@ export function createBridge(options: BridgeOptions = {}): (req: IncomingMessage
 
       if (req.method === 'POST' && route === '/pip') {
         const { call, args } = JSON.parse(await readBody(req)) as { call: string; args: unknown };
+        const id = randomUUID();
         const child = spawn(python, [...hostArgs, '--pip', call, JSON.stringify(args ?? {})], { env, cwd: work });
+        pips.set(id, child);
+        child.on('close', () => pips.delete(id));
+        child.stdin.on('error', () => {});
         child.stderr.on('data', (d: Buffer) => process.stderr.write(`[py pip] ${d}`));
-        res.writeHead(200, { 'content-type': 'application/x-ndjson', 'x-content-type-options': 'nosniff', 'cache-control': 'no-store' });
+        res.writeHead(200, { 'content-type': 'application/x-ndjson', 'x-content-type-options': 'nosniff', 'x-pip-id': id, 'cache-control': 'no-store' });
         child.stdout.pipe(res);
         res.on('close', () => child.kill());
+        return true;
+      }
+
+      const cancelMatch = /^\/pip\/([^/]+)\/cancel$/.exec(route);
+      if (req.method === 'POST' && cancelMatch) {
+        pips.get(cancelMatch[1]!)?.stdin.write('cancel\n');
+        json(res, 200, { ok: true });
         return true;
       }
 

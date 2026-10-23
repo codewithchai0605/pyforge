@@ -53,6 +53,13 @@ def main(argv=None) -> int:
 
     if args.pip:
         call, payload = args.pip
+
+        def listen_for_cancel() -> None:
+            for line in proto_in:
+                if line.strip() == "cancel":
+                    api.cancel_pip()
+
+        threading.Thread(target=listen_for_cancel, daemon=True).start()
         result = api.pip_call(sink, call, payload)
         sink.emit(json.dumps({"t": "result", "payload": json.loads(result)}))
         return 0

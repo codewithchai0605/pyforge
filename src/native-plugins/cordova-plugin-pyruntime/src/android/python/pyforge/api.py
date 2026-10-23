@@ -48,8 +48,11 @@ def start_run(sink: Any, req_json: str) -> None:
     # binder thread (daemon). Threads the user's script starts would then be
     # daemonic too, and a script like `Thread(target=...).start()` would exit
     # without waiting for them, unlike under plain `python script.py`.
-    _thread = threading.Thread(target=runner.run, args=(session, req), name="pyforge-main", daemon=False)
-    _thread.start()
+    thread = threading.Thread(target=runner.run, args=(session, req), name="pyforge-main", daemon=False)
+    thread.start()
+    # Published only once started: the desktop host waits on `_thread` from
+    # another thread and join()ing a not-yet-started thread raises.
+    _thread = thread
 
 
 def feed_stdin(text: Optional[str]) -> None:
@@ -60,6 +63,13 @@ def feed_stdin(text: Optional[str]) -> None:
 def feed_gui(event_json: str) -> None:
     if core.has_session():
         core.current_session().feed_gui(json.loads(event_json))
+
+
+def cancel_pip() -> None:
+    """Ask the running package operation to stop (safe to call from any thread)."""
+    from . import pkgmgr
+
+    pkgmgr.request_cancel()
 
 
 # -- package manager (UI process) --------------------------------------
@@ -89,6 +99,8 @@ def pip_call(sink: Any, call: str, args_json: str) -> str:
         else:
             raise ValueError(f"unknown pip call: {call}")
         return json.dumps({"ok": True, "result": result})
+    except pkgmgr.Cancelled:
+        return json.dumps({"ok": False, "cancelled": True, "error": "Cancelled"})
     except pkgmgr.PkgError as e:
         return json.dumps({"ok": False, "error": str(e)})
     except Exception as e:  # noqa: BLE001 - report, never crash the UI process

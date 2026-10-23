@@ -10,6 +10,7 @@
  */
 import type {
   GuiEvent,
+  Insets,
   InstalledPackage,
   LookupResult,
   PipApi,
@@ -60,10 +61,10 @@ function pipViaLines(call: string, args: unknown, onProgress: (p: PipProgress) =
       call,
       JSON.stringify(args),
       (line) => {
-        const ev = JSON.parse(line) as { t: 'result'; payload?: { ok: boolean; result?: unknown; error?: string } } | PipProgress;
+        const ev = JSON.parse(line) as { t: 'result'; payload?: { ok: boolean; result?: unknown; error?: string; cancelled?: boolean } } | PipProgress;
         if (ev.t === 'result') {
           if (ev.payload?.ok) resolve(ev.payload.result);
-          else reject(new PipError(ev.payload?.error ?? 'Package operation failed'));
+          else reject(new PipError(ev.payload?.error ?? 'Package operation failed', ev.payload?.cancelled === true));
         } else {
           onProgress(ev);
         }
@@ -73,8 +74,9 @@ function pipViaLines(call: string, args: unknown, onProgress: (p: PipProgress) =
   });
 }
 
-function makePip(start: LineStarter): PipApi {
+function makePip(start: LineStarter, cancel: () => void): PipApi {
   return {
+    cancel,
     list: () => pipViaLines('list', {}, () => {}, start) as Promise<InstalledPackage[]>,
     lookup: (spec) => pipViaLines('lookup', { spec }, () => {}, start) as Promise<LookupResult>,
     install: (specs, onProgress) => pipViaLines('install', { specs }, onProgress, start) as ReturnType<PipApi['install']>,
@@ -125,7 +127,12 @@ export function cordovaRuntime(readBase64: (path: string) => Promise<string>): P
       return `data:image/png;base64,${b64}`;
     },
 
-    pip: makePip((call, payload, onLine, onError) => execStream('pip', [call, payload], onLine, onError)),
+    pip: makePip(
+      (call, payload, onLine, onError) => execStream('pip', [call, payload], onLine, onError),
+      () => void exec('pipCancel').catch(() => {}),
+    ),
+
+    insets: () => exec<Insets>('insets').catch(() => null),
   };
 }
 
@@ -217,11 +224,30 @@ export function devRuntime(base = ''): PyRuntime {
       return url(`/plot?path=${encodeURIComponent(path)}`);
     },
 
-    pip: makePip((call, payload, onLine, onError) => {
-      postJson(url('/pip'), { call, args: JSON.parse(payload) })
-        .then((res) => readLines(res, onLine))
-        .catch((err: Error) => onError(err));
-    }),
+    pip: (() => {
+      let pipId: string | null = null;
+      let cancelWanted = false;
+      const sendCancel = (): void => void postJson(url(`/pip/${pipId}/cancel`), {}).catch(() => {});
+      return makePip(
+        (call, payload, onLine, onError) => {
+          pipId = null;
+          cancelWanted = false;
+          postJson(url('/pip'), { call, args: JSON.parse(payload) })
+            .then((res) => {
+              pipId = res.headers.get('x-pip-id');
+              if (cancelWanted && pipId) sendCancel();
+              return readLines(res, onLine);
+            })
+            .catch((err: Error) => onError(err));
+        },
+        () => {
+          if (pipId) sendCancel();
+          else cancelWanted = true; // the request hasn't been answered yet: cancel as soon as it is
+        },
+      );
+    })(),
+
+    insets: () => Promise.resolve(null),
   };
 }
 
@@ -249,7 +275,9 @@ export function noneRuntime(): PyRuntime {
       };
     },
     imageUrl: () => Promise.reject(new Error(reason)),
+    insets: () => Promise.resolve(null),
     pip: {
+      cancel() {},
       list: () => Promise.resolve([]),
       lookup: async () => unavailable(),
       install: async () => unavailable(),

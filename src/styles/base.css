@@ -20,6 +20,25 @@ body {
 
 body {
   overflow: hidden;
+  /* No page zoom (pinch or double-tap): it scales the whole UI and breaks the
+     layout. Scrolling stays; pinch inside the editor resizes the code font. */
+  touch-action: pan-x pan-y;
+  /* A tool UI, not a document: don't start text selection or show the
+     long-press callout on chrome. Editor, console and terminal opt back in. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.cm-editor,
+.console-log,
+.xterm,
+input,
+textarea,
+.pip-log {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 
 button,

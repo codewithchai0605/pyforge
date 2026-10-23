@@ -76,11 +76,24 @@ export interface RunHandle {
   done: Promise<Extract<PyEvent, { t: 'exit' }>>;
 }
 
+export interface Insets {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
 export interface PipApi {
   list(): Promise<InstalledPackage[]>;
   lookup(spec: string): Promise<LookupResult>;
   install(specs: string[], onProgress: (p: PipProgress) => void): Promise<{ installed: { name: string; version: string }[]; skipped: string[] }>;
   uninstall(name: string, onProgress: (p: PipProgress) => void): Promise<{ removed: string; files: number; dependents: string[] }>;
+  /**
+   * Stop the install/uninstall in progress. The pending promise rejects with a
+   * PipError whose `cancelled` is true. Cancelling an install never leaves a
+   * half-installed package behind.
+   */
+  cancel(): void;
 }
 
 export interface PyRuntime {
@@ -90,8 +103,18 @@ export interface PyRuntime {
   run(req: RunRequest, onEvent: (event: PyEvent) => void): RunHandle;
   /** A URL an <img> can display for a plot file the program wrote. */
   imageUrl(path: string): Promise<string>;
+  /** Padding (CSS px) the page must add for system bars the WebView does not already avoid; null if unknown. */
+  insets(): Promise<Insets | null>;
   readonly pip: PipApi;
 }
 
 /** Thrown by pip operations; `message` is safe to show to the user as-is. */
-export class PipError extends Error {}
+export class PipError extends Error {
+  constructor(
+    message: string,
+    /** True when the user cancelled (not a failure). */
+    readonly cancelled = false,
+  ) {
+    super(message);
+  }
+}

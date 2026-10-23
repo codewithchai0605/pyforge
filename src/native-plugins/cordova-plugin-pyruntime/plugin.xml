@@ -59,6 +59,9 @@
         <source-file src="src/android/python/pyforge/shims/turtle.py" target-dir="app/src/main/python/pyforge/shims" />
         <source-file src="src/android/python/pyforge/tags.py" target-dir="app/src/main/python/pyforge" />
 
+        <!-- WindowInsetsCompat, used to measure the system-bar insets the page must add. -->
+        <framework src="androidx.core:core:1.13.1" />
+
         <!-- Applies the Chaquopy Gradle plugin and configures Python. -->
         <framework src="src/android/pyruntime.gradle" custom="true" type="gradleReference" />
     </platform>
