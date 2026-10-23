@@ -4,8 +4,15 @@
   "description": "Embedded CPython for Cordova/Android via Chaquopy, with an isolated runner process and a package manager.",
   "cordova": {
     "id": "cordova-plugin-pyruntime",
-    "platforms": ["android"]
+    "platforms": [
+      "android"
+    ]
   },
-  "keywords": ["ecosystem:cordova", "cordova-android", "python", "chaquopy"],
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android",
+    "python",
+    "chaquopy"
+  ],
   "license": "Apache-2.0"
 }

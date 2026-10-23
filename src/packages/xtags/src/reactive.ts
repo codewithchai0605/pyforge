@@ -27,21 +27,21 @@
  */
 
 export interface Signal<T> {
-	(): T;
-	readonly __isSignal: true;
-	/** Replaces the value. No-ops (and doesn't notify) if `Object.is` says it's unchanged. */
-	set(next: T): void;
-	/** Convenience for `set(fn(current))`. */
-	update(fn: (current: T) => T): void;
-	/** Reads the current value without subscribing the active effect. */
-	peek(): T;
+  (): T;
+  readonly __isSignal: true;
+  /** Replaces the value. No-ops (and doesn't notify) if `Object.is` says it's unchanged. */
+  set(next: T): void;
+  /** Convenience for `set(fn(current))`. */
+  update(fn: (current: T) => T): void;
+  /** Reads the current value without subscribing the active effect. */
+  peek(): T;
 }
 
 interface Subscriber {
-	execute(): void;
-	/** Every signal's subscriber-set that this run added itself to, so the
-	 *  next run can remove itself cleanly before re-subscribing. */
-	deps: Set<Set<Subscriber>>;
+  execute(): void;
+  /** Every signal's subscriber-set that this run added itself to, so the
+   *  next run can remove itself cleanly before re-subscribing. */
+  deps: Set<Set<Subscriber>>;
 }
 
 let activeSubscriber: Subscriber | null = null;
@@ -54,11 +54,11 @@ let activeSubscriber: Subscriber | null = null;
  * (construction time) still propagate to the caller as usual.
  */
 function run(sub: Subscriber): void {
-	try {
-		sub.execute();
-	} catch (err) {
-		console.error('[xtags] error in reactive update', err);
-	}
+  try {
+    sub.execute();
+  } catch (err) {
+    console.error("[xtags] error in reactive update", err);
+  }
 }
 
 // --- batching --------------------------------------------------------------
@@ -81,17 +81,17 @@ const pendingNotifications = new Set<Subscriber>();
  * batch itself, same as the unbatched behavior.
  */
 export function batch(fn: () => void): void {
-	batchDepth++;
-	try {
-		fn();
-	} finally {
-		batchDepth--;
-		if (batchDepth === 0 && pendingNotifications.size > 0) {
-			const subs = [...pendingNotifications];
-			pendingNotifications.clear();
-			for (const sub of subs) run(sub);
-		}
-	}
+  batchDepth++;
+  try {
+    fn();
+  } finally {
+    batchDepth--;
+    if (batchDepth === 0 && pendingNotifications.size > 0) {
+      const subs = [...pendingNotifications];
+      pendingNotifications.clear();
+      for (const sub of subs) run(sub);
+    }
+  }
 }
 
 /**
@@ -102,50 +102,50 @@ export function batch(fn: () => void): void {
  * event handler, or an effect that should re-run on A but only *read* B).
  */
 export function untrack<T>(fn: () => T): T {
-	const previous = activeSubscriber;
-	activeSubscriber = null;
-	try {
-		return fn();
-	} finally {
-		activeSubscriber = previous;
-	}
+  const previous = activeSubscriber;
+  activeSubscriber = null;
+  try {
+    return fn();
+  } finally {
+    activeSubscriber = previous;
+  }
 }
 
 export function signal<T>(initial: T): Signal<T> {
-	let value = initial;
-	const subscribers = new Set<Subscriber>();
+  let value = initial;
+  const subscribers = new Set<Subscriber>();
 
-	const read = (() => {
-		if (activeSubscriber) {
-			subscribers.add(activeSubscriber);
-			activeSubscriber.deps.add(subscribers);
-		}
-		return value;
-	}) as Signal<T>;
+  const read = (() => {
+    if (activeSubscriber) {
+      subscribers.add(activeSubscriber);
+      activeSubscriber.deps.add(subscribers);
+    }
+    return value;
+  }) as Signal<T>;
 
-	Object.defineProperty(read, '__isSignal', { value: true });
+  Object.defineProperty(read, "__isSignal", { value: true });
 
-	read.set = (next: T) => {
-		if (Object.is(next, value)) return;
-		value = next;
-		if (batchDepth > 0) {
-			for (const sub of subscribers) pendingNotifications.add(sub);
-			return;
-		}
-		// Snapshot first: an effect's own execute() may resubscribe (add itself
-		// back to `subscribers`) while we're in the middle of iterating it.
-		for (const sub of [...subscribers]) run(sub);
-	};
+  read.set = (next: T) => {
+    if (Object.is(next, value)) return;
+    value = next;
+    if (batchDepth > 0) {
+      for (const sub of subscribers) pendingNotifications.add(sub);
+      return;
+    }
+    // Snapshot first: an effect's own execute() may resubscribe (add itself
+    // back to `subscribers`) while we're in the middle of iterating it.
+    for (const sub of [...subscribers]) run(sub);
+  };
 
-	read.update = (fn) => read.set(fn(value));
-	read.peek = () => value;
+  read.update = (fn) => read.set(fn(value));
+  read.peek = () => value;
 
-	return read;
+  return read;
 }
 
 function clearDeps(sub: Subscriber) {
-	for (const depSet of sub.deps) depSet.delete(sub);
-	sub.deps.clear();
+  for (const depSet of sub.deps) depSet.delete(sub);
+  sub.deps.clear();
 }
 
 // --- ownership / cleanup scopes ---------------------------------------------
@@ -161,7 +161,7 @@ function clearDeps(sub: Subscriber) {
  * on unmount).
  */
 interface CleanupScope {
-	push(fn: () => void): void;
+  push(fn: () => void): void;
 }
 
 const scopeStack: CleanupScope[] = [];
@@ -174,7 +174,7 @@ const scopeStack: CleanupScope[] = [];
  * active — e.g. at module top level — since there's no scope to attach to.
  */
 export function onCleanup(fn: () => void): void {
-	scopeStack[scopeStack.length - 1]?.push(fn);
+  scopeStack[scopeStack.length - 1]?.push(fn);
 }
 
 /**
@@ -186,23 +186,23 @@ export function onCleanup(fn: () => void): void {
  * and want the same "one dispose() tears down everything" guarantee.
  */
 export function createRoot<T>(fn: (dispose: () => void) => T): T {
-	const cleanups: Array<() => void> = [];
-	let disposed = false;
+  const cleanups: Array<() => void> = [];
+  let disposed = false;
 
-	const dispose = () => {
-		if (disposed) return;
-		disposed = true;
-		const fns = cleanups.splice(0);
-		for (const cleanupFn of fns.reverse()) cleanupFn();
-	};
+  const dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    const fns = cleanups.splice(0);
+    for (const cleanupFn of fns.reverse()) cleanupFn();
+  };
 
-	const scope: CleanupScope = { push: (cleanupFn) => cleanups.push(cleanupFn) };
-	scopeStack.push(scope);
-	try {
-		return fn(dispose);
-	} finally {
-		scopeStack.pop();
-	}
+  const scope: CleanupScope = { push: (cleanupFn) => cleanups.push(cleanupFn) };
+  scopeStack.push(scope);
+  try {
+    return fn(dispose);
+  } finally {
+    scopeStack.pop();
+  }
 }
 
 /**
@@ -230,67 +230,69 @@ export function createRoot<T>(fn: (dispose: () => void) => T): T {
  * in this codebase do — no enclosing root required).
  */
 export function effect(fn: () => unknown): () => void {
-	let teardown: Array<() => void> = [];
-	// `signal.set` notifies from a *snapshot* of subscribers. If an earlier
-	// subscriber in the same pass tears down a region, effects it just disposed
-	// are still in that snapshot; without this flag they would run once more
-	// (reading state the region's condition already ruled out) and re-subscribe.
-	let disposed = false;
+  let teardown: Array<() => void> = [];
+  // `signal.set` notifies from a *snapshot* of subscribers. If an earlier
+  // subscriber in the same pass tears down a region, effects it just disposed
+  // are still in that snapshot; without this flag they would run once more
+  // (reading state the region's condition already ruled out) and re-subscribe.
+  let disposed = false;
 
-	function runTeardown() {
-		const fns = teardown;
-		teardown = [];
-		for (const cleanupFn of fns.reverse()) cleanupFn();
-	}
+  function runTeardown() {
+    const fns = teardown;
+    teardown = [];
+    for (const cleanupFn of fns.reverse()) cleanupFn();
+  }
 
-	const sub: Subscriber = {
-		deps: new Set(),
-		execute() {
-			if (disposed) return;
-			clearDeps(sub);
-			runTeardown();
-			const previousSubscriber = activeSubscriber;
-			activeSubscriber = sub;
-			const scope: CleanupScope = { push: (cleanupFn) => teardown.push(cleanupFn) };
-			scopeStack.push(scope);
-			try {
-				const result = fn();
-				// Only treat the return value as cleanup if it's actually callable —
-				// an effect body is free to return anything (or nothing) incidentally
-				// (e.g. `() => array.push(x)` returns a number), and that must not
-				// be invoked as if it were teardown.
-				if (typeof result === 'function') teardown.push(result as () => void);
-			} finally {
-				scopeStack.pop();
-				activeSubscriber = previousSubscriber;
-			}
-		},
-	};
+  const sub: Subscriber = {
+    deps: new Set(),
+    execute() {
+      if (disposed) return;
+      clearDeps(sub);
+      runTeardown();
+      const previousSubscriber = activeSubscriber;
+      activeSubscriber = sub;
+      const scope: CleanupScope = {
+        push: (cleanupFn) => teardown.push(cleanupFn),
+      };
+      scopeStack.push(scope);
+      try {
+        const result = fn();
+        // Only treat the return value as cleanup if it's actually callable —
+        // an effect body is free to return anything (or nothing) incidentally
+        // (e.g. `() => array.push(x)` returns a number), and that must not
+        // be invoked as if it were teardown.
+        if (typeof result === "function") teardown.push(result as () => void);
+      } finally {
+        scopeStack.pop();
+        activeSubscriber = previousSubscriber;
+      }
+    },
+  };
 
-	sub.execute();
+  sub.execute();
 
-	const dispose = () => {
-		disposed = true;
-		clearDeps(sub);
-		runTeardown();
-	};
+  const dispose = () => {
+    disposed = true;
+    clearDeps(sub);
+    runTeardown();
+  };
 
-	// Register with whatever scope was active when effect() was *called*
-	// (note: sub.execute() above already pushed/popped its own scope, so by
-	// this point the stack is back to the caller's scope, not this effect's
-	// own run) — this is what makes nested effects/roots dispose together.
-	onCleanup(dispose);
+  // Register with whatever scope was active when effect() was *called*
+  // (note: sub.execute() above already pushed/popped its own scope, so by
+  // this point the stack is back to the caller's scope, not this effect's
+  // own run) — this is what makes nested effects/roots dispose together.
+  onCleanup(dispose);
 
-	return dispose;
+  return dispose;
 }
 
 /** A read-only signal derived from other signals, recomputed on the fly. */
 export function computed<T>(fn: () => T): Signal<T> {
-	const result = signal<T>(undefined as unknown as T);
-	effect(() => {
-		result.set(fn());
-	});
-	return result;
+  const result = signal<T>(undefined as unknown as T);
+  effect(() => {
+    result.set(fn());
+  });
+  return result;
 }
 
 /**
@@ -298,11 +300,14 @@ export function computed<T>(fn: () => T): Signal<T> {
  * (`T | (() => T)`). For props that are never themselves functions.
  */
 export function read<T>(value: T | (() => T)): T {
-	return typeof value === 'function' ? (value as () => T)() : value;
+  return typeof value === "function" ? (value as () => T)() : value;
 }
 
 export function isSignal(value: unknown): value is Signal<unknown> {
-	return typeof value === 'function' && (value as Partial<Signal<unknown>>).__isSignal === true;
+  return (
+    typeof value === "function" &&
+    (value as Partial<Signal<unknown>>).__isSignal === true
+  );
 }
 
 /**
@@ -324,22 +329,22 @@ export function isSignal(value: unknown): value is Signal<unknown> {
  * enclosing scope is (the equivalent of `useEffect(() => { …; return cleanup }, [])`).
  */
 export function onMount(fn: () => unknown): void {
-	let disposed = false;
-	let teardown: (() => void) | undefined;
-	onCleanup(() => {
-		disposed = true;
-		teardown?.();
-	});
-	queueMicrotask(() => {
-		if (disposed) return;
-		// Run inside its own root: effects/onCleanup() created by `fn` are owned
-		// by the mount, and a returned function is registered as its cleanup.
-		teardown = createRoot((dispose) => {
-			const result = fn();
-			if (typeof result === 'function') onCleanup(result as () => void);
-			return dispose;
-		});
-	});
+  let disposed = false;
+  let teardown: (() => void) | undefined;
+  onCleanup(() => {
+    disposed = true;
+    teardown?.();
+  });
+  queueMicrotask(() => {
+    if (disposed) return;
+    // Run inside its own root: effects/onCleanup() created by `fn` are owned
+    // by the mount, and a returned function is registered as its cleanup.
+    teardown = createRoot((dispose) => {
+      const result = fn();
+      if (typeof result === "function") onCleanup(result as () => void);
+      return dispose;
+    });
+  });
 }
 
 /**
@@ -362,20 +367,20 @@ export function onMount(fn: () => unknown): void {
  * ```
  */
 export function watch<T>(
-	source: () => T,
-	fn: (value: T, previous: T | undefined) => unknown,
-	options: { defer?: boolean } = {}
+  source: () => T,
+  fn: (value: T, previous: T | undefined) => unknown,
+  options: { defer?: boolean } = {},
 ): () => void {
-	const value$ = computed(source);
-	let first = true;
-	let previous: T | undefined;
-	return effect(() => {
-		const value = value$();
-		const prev = previous;
-		const isFirst = first;
-		first = false;
-		previous = value;
-		if (isFirst && options.defer) return undefined;
-		return untrack(() => fn(value, prev));
-	});
+  const value$ = computed(source);
+  let first = true;
+  let previous: T | undefined;
+  return effect(() => {
+    const value = value$();
+    const prev = previous;
+    const isFirst = first;
+    first = false;
+    previous = value;
+    if (isFirst && options.defer) return undefined;
+    return untrack(() => fn(value, prev));
+  });
 }

@@ -24,7 +24,9 @@ declare global {
       errorCallback: (err: unknown) => void,
     ): void;
   }
-  const cordova: Window['cordova'] & { file?: { dataDirectory: string; cacheDirectory: string } };
+  const cordova: Window["cordova"] & {
+    file?: { dataDirectory: string; cacheDirectory: string };
+  };
 
   interface CordovaMetadata {
     modificationTime: Date;
@@ -36,8 +38,14 @@ declare global {
     isDirectory: boolean;
     name: string;
     toURL(): string;
-    getMetadata(success: (meta: CordovaMetadata) => void, error: (err: unknown) => void): void;
-    getParent(success: (entry: CordovaDirectoryEntry) => void, error: (err: unknown) => void): void;
+    getMetadata(
+      success: (meta: CordovaMetadata) => void,
+      error: (err: unknown) => void,
+    ): void;
+    getParent(
+      success: (entry: CordovaDirectoryEntry) => void,
+      error: (err: unknown) => void,
+    ): void;
     remove(success: () => void, error: (err: unknown) => void): void;
     moveTo(
       parent: CordovaDirectoryEntry,
@@ -49,11 +57,17 @@ declare global {
 
   interface CordovaFileEntry extends CordovaEntry {
     file(success: (file: File) => void, error: (err: unknown) => void): void;
-    createWriter(success: (writer: FileWriter) => void, error: (err: unknown) => void): void;
+    createWriter(
+      success: (writer: FileWriter) => void,
+      error: (err: unknown) => void,
+    ): void;
   }
 
   interface CordovaDirectoryReader {
-    readEntries(success: (entries: CordovaEntry[]) => void, error: (err: unknown) => void): void;
+    readEntries(
+      success: (entries: CordovaEntry[]) => void,
+      error: (err: unknown) => void,
+    ): void;
   }
 
   interface CordovaDirectoryEntry extends CordovaEntry {

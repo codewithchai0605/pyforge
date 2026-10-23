@@ -10,4 +10,4 @@
 // A file that *does* still write that import explicitly is unaffected:
 // its own local `h`/`Fragment` bindings shadow the injected ones, same as
 // any other local declaration would.
-export { h, Fragment } from './src/dom';
+export { h, Fragment } from "./src/dom";

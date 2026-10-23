@@ -1,8 +1,8 @@
-import { signal, type Signal } from 'xtags';
-import type { EditorView } from '@codemirror/view';
-import type { EditorState } from '@codemirror/state';
-import { createEditorView, createFileState } from '@/editor/createEditor';
-import { fsOperation } from '@/fileSystem';
+import { signal, type Signal } from "xtags";
+import type { EditorView } from "@codemirror/view";
+import type { EditorState } from "@codemirror/state";
+import { createEditorView, createFileState } from "@/editor/createEditor";
+import { fsOperation } from "@/fileSystem";
 
 let nextFileId = 1;
 
@@ -77,7 +77,11 @@ export class EditorManager {
    *  folder) is threaded through from the explorer tree at call time,
    *  since it can't be recovered later from `url` alone — see EditorFile's
    *  `path` field. */
-  async openFile(url: string, name: string, path: string | null = null): Promise<EditorFile> {
+  async openFile(
+    url: string,
+    name: string,
+    path: string | null = null,
+  ): Promise<EditorFile> {
     const existing = this.activeFiles.peek().find((f) => f.url === url);
     if (existing) {
       this.switchTo(existing.id);
@@ -95,15 +99,29 @@ export class EditorManager {
    *  "sample content" file. Never collides with an already-open tab, since
    *  unlike `openFile` there's no url to match against — every call opens
    *  a distinct tab, same as a real editor's "New File" always does. */
-  newFile(name = 'untitled', content = ''): EditorFile {
+  newFile(name = "untitled", content = ""): EditorFile {
     const file = this.addFile(null, name, content, null);
     this.switchTo(file.id);
     return file;
   }
 
-  private addFile(url: string | null, name: string, content: string, path: string | null): EditorFile {
-    const file: EditorFile = { id: `file-${nextFileId++}`, url, name, path, dirty: signal(false) };
-    this.states.set(file.id, createFileState(name, content, () => this.handleViewUpdate(file.id)));
+  private addFile(
+    url: string | null,
+    name: string,
+    content: string,
+    path: string | null,
+  ): EditorFile {
+    const file: EditorFile = {
+      id: `file-${nextFileId++}`,
+      url,
+      name,
+      path,
+      dirty: signal(false),
+    };
+    this.states.set(
+      file.id,
+      createFileState(name, content, () => this.handleViewUpdate(file.id)),
+    );
     this.savedContents.set(file.id, content);
     this.activeFiles.update((files) => [...files, file]);
     return file;
@@ -159,7 +177,7 @@ export class EditorManager {
       this.switchTo(next.id);
     } else {
       this.activeFile.set(null);
-      this.editor.setState(createFileState('', '', () => {}));
+      this.editor.setState(createFileState("", "", () => {}));
       this.notify();
     }
   }
@@ -188,7 +206,8 @@ export class EditorManager {
     const failed: string[] = [];
     for (const file of this.activeFiles.peek()) {
       if (!file.url || !file.dirty.peek()) continue;
-      const state = file.id === active?.id ? this.editor.state : this.states.get(file.id);
+      const state =
+        file.id === active?.id ? this.editor.state : this.states.get(file.id);
       if (!state) continue;
       const content = state.doc.toString();
       try {
@@ -206,9 +225,10 @@ export class EditorManager {
   /** Closes every tab whose file is `url` or lives inside the folder `url`
    *  (used after a delete or rename, so no tab points at something gone). */
   closeByUrl(url: string): void {
-    const prefix = url.endsWith('/') ? url : url + '/';
+    const prefix = url.endsWith("/") ? url : url + "/";
     for (const file of [...this.activeFiles.peek()]) {
-      if (file.url && (file.url === url || file.url.startsWith(prefix))) this.closeFile(file.id);
+      if (file.url && (file.url === url || file.url.startsWith(prefix)))
+        this.closeFile(file.id);
     }
   }
 
@@ -229,7 +249,10 @@ export class EditorManager {
     const totalLines = this.editor.state.doc.lines;
     const clamped = Math.min(Math.max(1, lineNumber), totalLines);
     const line = this.editor.state.doc.line(clamped);
-    this.editor.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
+    this.editor.dispatch({
+      selection: { anchor: line.from },
+      scrollIntoView: true,
+    });
     this.editor.focus();
   }
 

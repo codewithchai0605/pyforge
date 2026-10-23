@@ -1,9 +1,9 @@
-import { LanguageSupport } from '@codemirror/language';
-import { python, pythonLanguage } from '@codemirror/lang-python';
-import { html } from '@codemirror/lang-html';
-import { css } from '@codemirror/lang-css';
-import { json } from '@codemirror/lang-json';
-import { importCompletions, snippetSource } from './pythonCompletions';
+import { LanguageSupport } from "@codemirror/language";
+import { python, pythonLanguage } from "@codemirror/lang-python";
+import { html } from "@codemirror/lang-html";
+import { css } from "@codemirror/lang-css";
+import { json } from "@codemirror/lang-json";
+import { importCompletions, snippetSource } from "./pythonCompletions";
 
 /**
  * Extension -> language. Python is the product; JSON/HTML/CSS are here only
@@ -32,7 +32,7 @@ const byExtension: Record<string, () => LanguageSupport> = {
 };
 
 export function languageForFilename(filename: string): LanguageSupport | null {
-  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
   const factory = byExtension[ext];
   return factory ? factory() : null;
 }

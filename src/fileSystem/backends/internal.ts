@@ -1,4 +1,4 @@
-import type { FileEntry, FileStats, FsOperation } from '../types';
+import type { FileEntry, FileStats, FsOperation } from "../types";
 
 /**
  * Backs any plain local URL cordova-plugin-file understands (app-private
@@ -12,18 +12,18 @@ import type { FileEntry, FileStats, FsOperation } from '../types';
  */
 
 const EXTENSION_MIME_TYPES: Record<string, string> = {
-  txt: 'text/plain',
-  py: 'text/x-python',
-  md: 'text/markdown',
-  js: 'text/javascript',
-  ts: 'text/typescript',
-  json: 'application/json',
-  html: 'text/html',
-  css: 'text/css',
+  txt: "text/plain",
+  py: "text/x-python",
+  md: "text/markdown",
+  js: "text/javascript",
+  ts: "text/typescript",
+  json: "application/json",
+  html: "text/html",
+  css: "text/css",
 };
 
 function guessMimeType(name: string): string | null {
-  const ext = name.split('.').pop()?.toLowerCase();
+  const ext = name.split(".").pop()?.toLowerCase();
   return (ext && EXTENSION_MIME_TYPES[ext]) ?? null;
 }
 
@@ -43,12 +43,16 @@ function getMetadata(entry: CordovaEntry): Promise<CordovaMetadata> {
  * empty array, not by any explicit end marker. Keep calling until that
  * happens.
  */
-async function readAllEntries(dir: CordovaDirectoryEntry): Promise<CordovaEntry[]> {
+async function readAllEntries(
+  dir: CordovaDirectoryEntry,
+): Promise<CordovaEntry[]> {
   const reader = dir.createReader();
   const all: CordovaEntry[] = [];
   let batch: CordovaEntry[];
   do {
-    batch = await new Promise<CordovaEntry[]>((resolve, reject) => reader.readEntries(resolve, reject));
+    batch = await new Promise<CordovaEntry[]>((resolve, reject) =>
+      reader.readEntries(resolve, reject),
+    );
     all.push(...batch);
   } while (batch.length > 0);
   return all;
@@ -56,7 +60,14 @@ async function readAllEntries(dir: CordovaDirectoryEntry): Promise<CordovaEntry[
 
 async function toFileEntry(entry: CordovaEntry): Promise<FileEntry> {
   if (entry.isDirectory) {
-    return { name: entry.name, isDirectory: true, url: entry.toURL(), size: 0, lastModified: 0, mimeType: null };
+    return {
+      name: entry.name,
+      isDirectory: true,
+      url: entry.toURL(),
+      size: 0,
+      lastModified: 0,
+      mimeType: null,
+    };
   }
   const meta = await getMetadata(entry);
   return {
@@ -93,7 +104,7 @@ function readFileAsBase64(file: File): Promise<string> {
       // readAsDataURL yields "data:<mime>;base64,<data>" — only the part
       // after the comma is the base64 payload callers actually asked for.
       const dataUrl = reader.result as string;
-      resolve(dataUrl.slice(dataUrl.indexOf(',') + 1));
+      resolve(dataUrl.slice(dataUrl.indexOf(",") + 1));
     };
     reader.readAsDataURL(file);
   });
@@ -143,16 +154,25 @@ export function internalFs(url: string): FsOperation {
       return Promise.all(children.map(toFileEntry));
     },
 
-    async readFile(encoding: 'utf8' | 'base64' = 'utf8') {
+    async readFile(encoding: "utf8" | "base64" = "utf8") {
       const entry = (await resolveEntry(url)) as CordovaFileEntry;
-      const file = await new Promise<File>((resolve, reject) => entry.file(resolve, reject));
-      return encoding === 'base64' ? readFileAsBase64(file) : readFileAsText(file);
+      const file = await new Promise<File>((resolve, reject) =>
+        entry.file(resolve, reject),
+      );
+      return encoding === "base64"
+        ? readFileAsBase64(file)
+        : readFileAsText(file);
     },
 
-    async writeFile(content: string, encoding: 'utf8' | 'base64' = 'utf8') {
+    async writeFile(content: string, encoding: "utf8" | "base64" = "utf8") {
       const entry = (await resolveEntry(url)) as CordovaFileEntry;
-      const writer = await new Promise<FileWriter>((resolve, reject) => entry.createWriter(resolve, reject));
-      const blob = encoding === 'base64' ? base64ToBlob(content) : new Blob([content], { type: 'text/plain' });
+      const writer = await new Promise<FileWriter>((resolve, reject) =>
+        entry.createWriter(resolve, reject),
+      );
+      const blob =
+        encoding === "base64"
+          ? base64ToBlob(content)
+          : new Blob([content], { type: "text/plain" });
       await overwriteWith(writer, blob);
     },
 
@@ -166,8 +186,14 @@ export function internalFs(url: string): FsOperation {
 
     async createDirectory(name: string) {
       const dir = (await resolveEntry(url)) as CordovaDirectoryEntry;
-      const created = await new Promise<CordovaDirectoryEntry>((resolve, reject) =>
-        dir.getDirectory(name, { create: true, exclusive: true }, resolve, reject),
+      const created = await new Promise<CordovaDirectoryEntry>(
+        (resolve, reject) =>
+          dir.getDirectory(
+            name,
+            { create: true, exclusive: true },
+            resolve,
+            reject,
+          ),
       );
       return toFileEntry(created);
     },
@@ -178,15 +204,21 @@ export function internalFs(url: string): FsOperation {
       // one that behaves like "delete this folder" from a user's point of view.
       if (entry.isDirectory) {
         const dir = entry as CordovaDirectoryEntry;
-        await new Promise<void>((resolve, reject) => dir.removeRecursively(resolve, reject));
+        await new Promise<void>((resolve, reject) =>
+          dir.removeRecursively(resolve, reject),
+        );
         return;
       }
-      await new Promise<void>((resolve, reject) => entry.remove(resolve, reject));
+      await new Promise<void>((resolve, reject) =>
+        entry.remove(resolve, reject),
+      );
     },
 
     async rename(newName: string) {
       const entry = await resolveEntry(url);
-      const parent = await new Promise<CordovaDirectoryEntry>((resolve, reject) => entry.getParent(resolve, reject));
+      const parent = await new Promise<CordovaDirectoryEntry>(
+        (resolve, reject) => entry.getParent(resolve, reject),
+      );
       const renamed = await new Promise<CordovaEntry>((resolve, reject) =>
         entry.moveTo(parent, newName, resolve, reject),
       );

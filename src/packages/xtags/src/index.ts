@@ -1,32 +1,38 @@
 export {
-	h,
-	Fragment,
-	Show,
-	Portal,
-	Switch,
-	Match,
-	createContext,
-	useContext,
-	dynamic,
-} from './dom';
-export type { Accessor, Child, Component, ComponentProps, Context } from './dom';
-export { For } from './list';
-export type { ForProps } from './list';
-export { render } from './render';
+  h,
+  Fragment,
+  Show,
+  Portal,
+  Switch,
+  Match,
+  createContext,
+  useContext,
+  dynamic,
+} from "./dom";
+export type {
+  Accessor,
+  Child,
+  Component,
+  ComponentProps,
+  Context,
+} from "./dom";
+export { For } from "./list";
+export type { ForProps } from "./list";
+export { render } from "./render";
 export {
-	signal,
-	effect,
-	computed,
-	isSignal,
-	batch,
-	untrack,
-	onCleanup,
-	createRoot,
-	onMount,
-	watch,
-	read,
-} from './reactive';
-export type { Signal } from './reactive';
+  signal,
+  effect,
+  computed,
+  isSignal,
+  batch,
+  untrack,
+  onCleanup,
+  createRoot,
+  onMount,
+  watch,
+  read,
+} from "./reactive";
+export type { Signal } from "./reactive";
 
 // So `import { h, Fragment } from 'xtags'; ...JSX...` type-checks under the
 // classic JSX transform.
@@ -38,15 +44,15 @@ export type { Signal } from './reactive';
 // (a global namespace can only be declared once, so if you ever add
 // acode-plugin-types to this project, delete `Element` and
 // `IntrinsicElements` below and keep `ElementChildrenAttribute`).
-import type { Child } from './dom';
+import type { Child } from "./dom";
 declare global {
-	namespace JSX {
-		type Element = Node;
-		interface IntrinsicElements {
-			[tagName: string]: Record<string, unknown> & { children?: Child };
-		}
-		interface ElementChildrenAttribute {
-			children: unknown;
-		}
-	}
+  namespace JSX {
+    type Element = Node;
+    interface IntrinsicElements {
+      [tagName: string]: Record<string, unknown> & { children?: Child };
+    }
+    interface ElementChildrenAttribute {
+      children: unknown;
+    }
+  }
 }

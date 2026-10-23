@@ -1,7 +1,7 @@
-import { externalFs } from './backends/external';
-import { internalFs } from './backends/internal';
-import { memoryFs, MEMORY_SCHEME } from './backends/memory';
-import type { FsOperation } from './types';
+import { externalFs } from "./backends/external";
+import { internalFs } from "./backends/internal";
+import { memoryFs, MEMORY_SCHEME } from "./backends/memory";
+import type { FsOperation } from "./types";
 
 /**
  * Every consumer of the file system goes through this one function —
@@ -15,7 +15,7 @@ import type { FsOperation } from './types';
  * bare app-private path), so a single prefix check is all this needs.
  */
 export function fsOperation(url: string): FsOperation {
-  if (url.startsWith('content://')) {
+  if (url.startsWith("content://")) {
     return externalFs(url);
   }
   // In-memory files for the desktop browser preview (no Cordova there).
@@ -25,5 +25,5 @@ export function fsOperation(url: string): FsOperation {
   return internalFs(url);
 }
 
-export { memoryEnsureDirectory, memorySnapshot } from './backends/memory';
-export type { FileEntry, FileStats, FsOperation } from './types';
+export { memoryEnsureDirectory, memorySnapshot } from "./backends/memory";
+export type { FileEntry, FileStats, FsOperation } from "./types";

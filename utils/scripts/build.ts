@@ -1,6 +1,10 @@
-import { rolldown } from 'rolldown';
-import { ENTRIES, createInputOptions, createOutputOptions } from '../build/config.js';
-import { cleanDir } from './clean.js';
+import { rolldown } from "rolldown";
+import {
+  ENTRIES,
+  createInputOptions,
+  createOutputOptions,
+} from "../build/config.js";
+import { cleanDir } from "./clean.js";
 
 /**
  * Each entry (boot, main) is built as its own completely independent
@@ -12,26 +16,30 @@ import { cleanDir } from './clean.js';
  * output.
  */
 async function build(): Promise<void> {
-  process.env.NODE_ENV = 'production';
+  process.env.NODE_ENV = "production";
 
-  console.log('Cleaning previous build output...');
-  await cleanDir('www/js');
-  await cleanDir('www/css');
+  console.log("Cleaning previous build output...");
+  await cleanDir("www/js");
+  await cleanDir("www/css");
 
   for (const entry of ENTRIES) {
     console.log(`Bundling ${entry}...`);
     const bundle = await rolldown(createInputOptions(entry, { isProd: true }));
     try {
-      const { output } = await bundle.write(createOutputOptions(entry, { isProd: true }));
+      const { output } = await bundle.write(
+        createOutputOptions(entry, { isProd: true }),
+      );
       for (const item of output) {
-        console.log(`  ${item.type === 'chunk' ? 'js  ' : 'css '} ${item.fileName}`);
+        console.log(
+          `  ${item.type === "chunk" ? "js  " : "css "} ${item.fileName}`,
+        );
       }
     } finally {
       await bundle.close();
     }
   }
 
-  console.log('Build complete -> www/js, www/css');
+  console.log("Build complete -> www/js, www/css");
 }
 
 build().catch((err) => {

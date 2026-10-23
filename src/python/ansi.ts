@@ -20,21 +20,28 @@ export interface AnsiStyle {
 }
 
 export type AnsiToken =
-  | { type: 'text'; text: string; style: AnsiStyle }
-  | { type: 'lf' }
+  | { type: "text"; text: string; style: AnsiStyle }
+  | { type: "lf" }
   /** "\r" not followed by "\n": the next text overwrites the current line. */
-  | { type: 'cr' }
+  | { type: "cr" }
   /** ESC[K / ESC[2K: wipe the current line. */
-  | { type: 'clear-line' };
+  | { type: "clear-line" };
 
-const ESC = '\u001b';
+const ESC = "\u001b";
 
 function blank(): AnsiStyle {
-  return { fg: null, bg: null, bold: false, dim: false, italic: false, underline: false };
+  return {
+    fg: null,
+    bg: null,
+    bold: false,
+    dim: false,
+    italic: false,
+    underline: false,
+  };
 }
 
 function hex(n: number): string {
-  return n.toString(16).padStart(2, '0');
+  return n.toString(16).padStart(2, "0");
 }
 
 /** xterm 256-colour palette index -> CSS colour. */
@@ -52,42 +59,42 @@ function color256(n: number): string {
 export class AnsiParser {
   private style: AnsiStyle = blank();
   /** Unprocessed tail from the previous chunk (partial escape, or a lone "\r"). */
-  private carry = '';
+  private carry = "";
 
   push(chunk: string): AnsiToken[] {
     const input = this.carry + chunk;
-    this.carry = '';
+    this.carry = "";
     const tokens: AnsiToken[] = [];
-    let text = '';
+    let text = "";
 
     const flushText = (): void => {
       if (text) {
-        tokens.push({ type: 'text', text, style: { ...this.style } });
-        text = '';
+        tokens.push({ type: "text", text, style: { ...this.style } });
+        text = "";
       }
     };
 
     for (let i = 0; i < input.length; i++) {
       const ch = input[i]!;
 
-      if (ch === '\n') {
+      if (ch === "\n") {
         flushText();
-        tokens.push({ type: 'lf' });
-      } else if (ch === '\r') {
+        tokens.push({ type: "lf" });
+      } else if (ch === "\r") {
         if (i === input.length - 1) {
           // Can't tell "\r" from the first half of "\r\n" yet.
-          this.carry = '\r';
+          this.carry = "\r";
           break;
         }
-        if (input[i + 1] === '\n') continue; // CRLF: the "\n" does the work
+        if (input[i + 1] === "\n") continue; // CRLF: the "\n" does the work
         flushText();
-        tokens.push({ type: 'cr' });
+        tokens.push({ type: "cr" });
       } else if (ch === ESC) {
         if (i + 1 >= input.length) {
           this.carry = input.slice(i);
           break;
         }
-        if (input[i + 1] !== '[') continue; // a bare ESC: drop it
+        if (input[i + 1] !== "[") continue; // a bare ESC: drop it
         let j = i + 2;
         while (j < input.length && /[0-9;?]/.test(input[j]!)) j++;
         if (j >= input.length) {
@@ -97,15 +104,15 @@ export class AnsiParser {
         const final = input[j]!;
         const params = input.slice(i + 2, j);
         i = j;
-        if (final === 'm') {
+        if (final === "m") {
           flushText();
           this.applySgr(params);
-        } else if (final === 'K') {
+        } else if (final === "K") {
           flushText();
-          tokens.push({ type: 'clear-line' });
+          tokens.push({ type: "clear-line" });
         }
         // Every other CSI (cursor movement, etc.) is ignored on purpose.
-      } else if (ch === '\b') {
+      } else if (ch === "\b") {
         // Backspace is rarely meaningful in a log view; drop it.
       } else {
         text += ch;
@@ -118,12 +125,15 @@ export class AnsiParser {
   /** Release a held-back lone "\r" (call when the program ends). */
   flush(): AnsiToken[] {
     const pending = this.carry;
-    this.carry = '';
-    return pending === '\r' ? [{ type: 'cr' }] : [];
+    this.carry = "";
+    return pending === "\r" ? [{ type: "cr" }] : [];
   }
 
   private applySgr(params: string): void {
-    const codes = params === '' ? [0] : params.split(';').map((p) => (p === '' ? 0 : Number(p)));
+    const codes =
+      params === ""
+        ? [0]
+        : params.split(";").map((p) => (p === "" ? 0 : Number(p)));
     for (let i = 0; i < codes.length; i++) {
       const c = codes[i]!;
       const s = this.style;
@@ -132,7 +142,7 @@ export class AnsiParser {
       else if (c === 2) s.dim = true;
       else if (c === 3) s.italic = true;
       else if (c === 4) s.underline = true;
-      else if (c === 22) (s.bold = false), (s.dim = false);
+      else if (c === 22) ((s.bold = false), (s.dim = false));
       else if (c === 23) s.italic = false;
       else if (c === 24) s.underline = false;
       else if (c >= 30 && c <= 37) s.fg = `var(--ansi-${c - 30})`;
@@ -142,12 +152,13 @@ export class AnsiParser {
       else if (c === 39) s.fg = null;
       else if (c === 49) s.bg = null;
       else if (c === 38 || c === 48) {
-        const target = c === 38 ? 'fg' : 'bg';
+        const target = c === 38 ? "fg" : "bg";
         if (codes[i + 1] === 5 && codes[i + 2] !== undefined) {
           s[target] = color256(codes[i + 2]!);
           i += 2;
         } else if (codes[i + 1] === 2 && codes[i + 4] !== undefined) {
-          s[target] = `#${hex(codes[i + 2]! & 255)}${hex(codes[i + 3]! & 255)}${hex(codes[i + 4]! & 255)}`;
+          s[target] =
+            `#${hex(codes[i + 2]! & 255)}${hex(codes[i + 3]! & 255)}${hex(codes[i + 4]! & 255)}`;
           i += 4;
         }
       }

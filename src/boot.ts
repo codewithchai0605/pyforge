@@ -13,17 +13,17 @@
  * is also what keeps it a genuinely separate, tiny Rolldown chunk instead
  * of dragging shared code into a second bundle.
  */
-import '@/styles/app.css';
+import "@/styles/app.css";
 
 function injectStylesheet(href: string): void {
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
   link.href = href;
   document.head.appendChild(link);
 }
 
 function injectScript(src: string): void {
-  const script = document.createElement('script');
+  const script = document.createElement("script");
   script.src = src;
   document.body.appendChild(script);
 }
@@ -32,5 +32,5 @@ function injectScript(src: string): void {
 // there's no hash to look up here. `import '@/styles/app.css'` above is
 // what makes the css plugin actually emit css/app.css in the first place;
 // this is what puts it on the page.
-injectStylesheet('css/app.css');
-injectScript('js/main.js');
+injectStylesheet("css/app.css");
+injectScript("js/main.js");

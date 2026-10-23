@@ -8,12 +8,18 @@ export interface Template {
 }
 
 export const TEMPLATES: Template[] = [
-  { id: 'blank', label: 'Blank file', description: 'An empty Python file', filename: 'untitled.py', content: '' },
   {
-    id: 'hello',
-    label: 'Hello, world',
-    description: 'The classic first program',
-    filename: 'main.py',
+    id: "blank",
+    label: "Blank file",
+    description: "An empty Python file",
+    filename: "untitled.py",
+    content: "",
+  },
+  {
+    id: "hello",
+    label: "Hello, world",
+    description: "The classic first program",
+    filename: "main.py",
     content: `def main():
     print("Hello from PyForge!")
 
@@ -23,10 +29,10 @@ if __name__ == "__main__":
 `,
   },
   {
-    id: 'input',
-    label: 'Ask for input',
-    description: 'Read text typed in the console',
-    filename: 'greeter.py',
+    id: "input",
+    label: "Ask for input",
+    description: "Read text typed in the console",
+    filename: "greeter.py",
     content: `name = input("What's your name? ")
 age = int(input("How old are you? "))
 
@@ -35,10 +41,10 @@ print(f"In 10 years you'll be {age + 10}.")
 `,
   },
   {
-    id: 'turtle',
-    label: 'Turtle graphics',
-    description: 'Draw a colourful spiral',
-    filename: 'spiral.py',
+    id: "turtle",
+    label: "Turtle graphics",
+    description: "Draw a colourful spiral",
+    filename: "spiral.py",
     content: `import turtle
 
 screen = turtle.Screen()
@@ -59,10 +65,10 @@ turtle.done()
 `,
   },
   {
-    id: 'plot',
-    label: 'Plot with matplotlib',
-    description: 'Needs the matplotlib package',
-    filename: 'plot.py',
+    id: "plot",
+    label: "Plot with matplotlib",
+    description: "Needs the matplotlib package",
+    filename: "plot.py",
     content: `import matplotlib.pyplot as plt
 import numpy as np
 
@@ -75,10 +81,10 @@ plt.show()
 `,
   },
   {
-    id: 'requests',
-    label: 'Fetch a web page',
-    description: 'Needs the requests package',
-    filename: 'fetch.py',
+    id: "requests",
+    label: "Fetch a web page",
+    description: "Needs the requests package",
+    filename: "fetch.py",
     content: `import requests
 
 response = requests.get("https://httpbin.org/json", timeout=10)
@@ -88,4 +94,4 @@ print(response.json())
   },
 ];
 
-export const DEFAULT_FILE = TEMPLATES.find((t) => t.id === 'hello')!;
+export const DEFAULT_FILE = TEMPLATES.find((t) => t.id === "hello")!;

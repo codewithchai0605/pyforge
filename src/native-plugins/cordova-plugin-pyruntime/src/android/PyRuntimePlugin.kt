@@ -1,5 +1,7 @@
 package com.pyforge.pyruntime
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -153,6 +155,46 @@ class PyRuntimePlugin : CordovaPlugin() {
         }
     }
 
+    /**
+     * Shows or hides Android's floating Cut/Copy/Paste bar (see PyForgeWebView).
+     * A no-op, not an error, if the app was started with a different engine.
+     */
+    private fun setSelectionBarHidden(hidden: Boolean, cb: CallbackContext) {
+        cordova.activity.runOnUiThread {
+            (webView.view as? PyForgeWebView)?.hideSelectionBar = hidden
+            cb.success()
+        }
+    }
+
+    /**
+     * Clipboard access for the page. The web's async clipboard API cannot be
+     * used for Paste inside an Android WebView (reading needs a permission the
+     * WebView has no way to ask for), so the page goes through here instead.
+     */
+    private fun readClipboard(cb: CallbackContext) {
+        cordova.activity.runOnUiThread {
+            try {
+                val clip = (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).primaryClip
+                val text = if (clip != null && clip.itemCount > 0) clip.getItemAt(0).coerceToText(context)?.toString().orEmpty() else ""
+                cb.success(text)
+            } catch (t: Throwable) {
+                cb.error(t.message ?: t.javaClass.simpleName)
+            }
+        }
+    }
+
+    private fun writeClipboard(text: String, cb: CallbackContext) {
+        cordova.activity.runOnUiThread {
+            try {
+                (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+                    .setPrimaryClip(ClipData.newPlainText("PyForge", text))
+                cb.success()
+            } catch (t: Throwable) {
+                cb.error(t.message ?: t.javaClass.simpleName)
+            }
+        }
+    }
+
     private class Dirs(val home: String, val site: String, val projects: String, val cache: String)
 
     private fun dirs(): Dirs {
@@ -213,6 +255,9 @@ class PyRuntimePlugin : CordovaPlugin() {
                 callbackContext.success()
             }
             "insets" -> measureInsets(callbackContext)
+            "selectionBar" -> setSelectionBarHidden(args.optBoolean(0, false), callbackContext)
+            "clipboardRead" -> readClipboard(callbackContext)
+            "clipboardWrite" -> writeClipboard(args.optString(0, ""), callbackContext)
             "pipCancel" -> {
                 // Cooperative: Python checks the flag between network reads and
                 // before it touches site-packages, so cancelling is always clean.

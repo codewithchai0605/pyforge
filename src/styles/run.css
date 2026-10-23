@@ -104,7 +104,7 @@
 }
 
 .status-running::before {
-  content: '';
+  content: "";
   display: inline-block;
   width: 7px;
   height: 7px;

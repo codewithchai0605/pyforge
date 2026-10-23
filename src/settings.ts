@@ -1,4 +1,4 @@
-import { signal, type Signal } from 'xtags';
+import { signal, type Signal } from "xtags";
 
 /** User preferences, persisted in localStorage (works the same in the WebView and a desktop browser). */
 export interface Settings {
@@ -11,11 +11,14 @@ export interface Settings {
   confirmOnExit: Signal<boolean>;
 }
 
-const KEY = 'pyforge.settings.v1';
+const KEY = "pyforge.settings.v1";
 
 function load(): Partial<Record<string, unknown>> {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? '{}') as Record<string, unknown>;
+    return JSON.parse(localStorage.getItem(KEY) ?? "{}") as Record<
+      string,
+      unknown
+    >;
   } catch {
     return {};
   }
@@ -24,8 +27,11 @@ function load(): Partial<Record<string, unknown>> {
 export function createSettings(): Settings {
   const saved = load();
   const num = (v: unknown, d: number, lo: number, hi: number): number =>
-    typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d;
-  const bool = (v: unknown, d: boolean): boolean => (typeof v === 'boolean' ? v : d);
+    typeof v === "number" && Number.isFinite(v)
+      ? Math.min(hi, Math.max(lo, v))
+      : d;
+  const bool = (v: unknown, d: boolean): boolean =>
+    typeof v === "boolean" ? v : d;
 
   const settings: Settings = {
     fontSize: signal(num(saved.fontSize, 15, 11, 26)),
@@ -68,11 +74,13 @@ export interface SessionState {
   active: string | null;
 }
 
-const SESSION_KEY = 'pyforge.session.v1';
+const SESSION_KEY = "pyforge.session.v1";
 
 export function loadSession(): SessionState {
   try {
-    const raw = JSON.parse(localStorage.getItem(SESSION_KEY) ?? 'null') as SessionState | null;
+    const raw = JSON.parse(
+      localStorage.getItem(SESSION_KEY) ?? "null",
+    ) as SessionState | null;
     if (raw && Array.isArray(raw.files)) return raw;
   } catch {
     /* fall through */

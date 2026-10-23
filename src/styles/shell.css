@@ -62,7 +62,9 @@
   flex: none;
   opacity: 0;
   transform: scale(0.4);
-  transition: opacity 0.15s, transform 0.15s var(--ease);
+  transition:
+    opacity 0.15s,
+    transform 0.15s var(--ease);
 }
 
 .dirty-dot.visible,
@@ -83,7 +85,10 @@
   color: #fff;
   font-weight: 600;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset;
-  transition: background 0.15s, transform 0.1s, opacity 0.15s;
+  transition:
+    background 0.15s,
+    transform 0.1s,
+    opacity 0.15s;
 }
 
 .run-btn:hover:not(:disabled) {
@@ -316,9 +321,100 @@
   color: var(--text-dim);
 }
 
+.qt-toggle {
+  position: relative;
+}
+
 .qt-toggle.active {
   background: var(--accent);
   color: var(--on-accent);
+}
+
+/* Double-tapped: stays on until tapped again. */
+.qt-toggle.locked::after {
+  content: "";
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: 4px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+/* ---------- Selection menu (floats over selected text; see components/selectionMenu.tsx) ---------- */
+
+.selection-menu {
+  position: absolute;
+  z-index: 25;
+  left: 0;
+  top: 0;
+  display: flex;
+  gap: 2px;
+  max-width: calc(100% - 16px);
+  padding: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--bg-raised);
+  box-shadow: var(--shadow);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(0.94);
+  transform-origin: 50% 100%;
+  transition:
+    opacity 0.12s,
+    transform 0.12s var(--ease),
+    visibility 0s 0.12s;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: pan-x;
+}
+
+.selection-menu::-webkit-scrollbar {
+  display: none;
+}
+
+.selection-menu[data-placement="below"] {
+  transform-origin: 50% 0;
+}
+
+.selection-menu.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: none;
+  transition:
+    opacity 0.12s,
+    transform 0.12s var(--ease),
+    visibility 0s;
+}
+
+.sm-btn {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  touch-action: manipulation;
+}
+
+.sm-btn:hover,
+.sm-btn:active {
+  background: var(--bg-active);
+}
+
+.sm-text {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 /* Output takes the space when it is open. */
@@ -344,7 +440,7 @@
 }
 
 .status-lang::before {
-  content: '';
+  content: "";
   display: inline-block;
   width: 7px;
   height: 7px;
@@ -403,13 +499,17 @@
   box-shadow: var(--shadow);
   transform: translateX(-102%);
   visibility: hidden;
-  transition: transform 0.24s var(--ease), visibility 0s 0.24s;
+  transition:
+    transform 0.24s var(--ease),
+    visibility 0s 0.24s;
 }
 
 #drawer.open {
   transform: none;
   visibility: visible;
-  transition: transform 0.24s var(--ease), visibility 0s;
+  transition:
+    transform 0.24s var(--ease),
+    visibility 0s;
 }
 
 .drawer-brand {
@@ -492,14 +592,20 @@
   transform: scale(0.92);
   opacity: 0;
   visibility: hidden;
-  transition: transform 0.14s var(--ease), opacity 0.14s, visibility 0s 0.14s;
+  transition:
+    transform 0.14s var(--ease),
+    opacity 0.14s,
+    visibility 0s 0.14s;
 }
 
 .menu.open {
   transform: none;
   opacity: 1;
   visibility: visible;
-  transition: transform 0.14s var(--ease), opacity 0.14s, visibility 0s;
+  transition:
+    transform 0.14s var(--ease),
+    opacity 0.14s,
+    visibility 0s;
 }
 
 .menu-item {
@@ -553,7 +659,9 @@
   font-size: 14px;
   opacity: 0;
   transform: translateY(8px);
-  transition: opacity 0.2s, transform 0.2s var(--ease);
+  transition:
+    opacity 0.2s,
+    transform 0.2s var(--ease);
 }
 
 .toast.show {

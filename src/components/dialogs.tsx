@@ -1,5 +1,5 @@
-import { icon, type IconName } from './icons';
-import { pushBack } from './backStack';
+import { icon, type IconName } from "./icons";
+import { pushBack } from "./backStack";
 
 /**
  * Promise-based modal dialogs. They replace window.prompt/confirm, which are
@@ -8,7 +8,9 @@ import { pushBack } from './backStack';
  */
 
 /** Opens `build(close)`'s element as a modal; resolves with whatever is passed to `close` (undefined if dismissed). */
-export function customDialog(build: (close: (result?: unknown) => void) => HTMLElement): Promise<unknown> {
+export function customDialog(
+  build: (close: (result?: unknown) => void) => HTMLElement,
+): Promise<unknown> {
   return new Promise((resolve) => {
     let done = false;
     let unregister = (): void => {};
@@ -17,17 +19,17 @@ export function customDialog(build: (close: (result?: unknown) => void) => HTMLE
       if (done) return;
       done = true;
       unregister();
-      scrim.classList.remove('show');
+      scrim.classList.remove("show");
       setTimeout(() => scrim.remove(), 160);
       resolve(result);
     };
     scrim.appendChild(build(close));
-    scrim.addEventListener('pointerdown', (e) => {
+    scrim.addEventListener("pointerdown", (e) => {
       if (e.target === scrim) close(undefined);
     });
     document.body.appendChild(scrim);
     unregister = pushBack(() => close(undefined));
-    requestAnimationFrame(() => scrim.classList.add('show'));
+    requestAnimationFrame(() => scrim.classList.add("show"));
   });
 }
 
@@ -44,15 +46,17 @@ export interface PromptOptions {
 }
 
 /** Asks for one line of text. Resolves with the trimmed value, or null if cancelled. */
-export async function promptDialog(options: PromptOptions): Promise<string | null> {
+export async function promptDialog(
+  options: PromptOptions,
+): Promise<string | null> {
   const result = await customDialog((close) => {
     const error = (<div class="dialog-error" role="alert" />) as HTMLElement;
     const input = (
       <input
         class="dialog-input"
         type="text"
-        value={options.value ?? ''}
-        placeholder={options.placeholder ?? ''}
+        value={options.value ?? ""}
+        placeholder={options.placeholder ?? ""}
         autocapitalize="off"
         autocomplete="off"
         autocorrect="off"
@@ -62,7 +66,9 @@ export async function promptDialog(options: PromptOptions): Promise<string | nul
     ) as HTMLInputElement;
     const submit = (): void => {
       const value = input.value.trim();
-      const problem = value ? (options.validate?.(value) ?? null) : 'Enter a name.';
+      const problem = value
+        ? (options.validate?.(value) ?? null)
+        : "Enter a name.";
       if (problem) {
         error.textContent = problem;
         input.focus();
@@ -70,19 +76,26 @@ export async function promptDialog(options: PromptOptions): Promise<string | nul
       }
       close(value);
     };
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') submit();
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") submit();
     });
-    input.addEventListener('input', () => (error.textContent = ''));
+    input.addEventListener("input", () => (error.textContent = ""));
     setTimeout(() => {
       input.focus();
-      const stem = options.selectStem ? input.value.lastIndexOf('.') : -1;
+      const stem = options.selectStem ? input.value.lastIndexOf(".") : -1;
       input.setSelectionRange(0, stem > 0 ? stem : input.value.length);
     }, 60);
     return (
-      <div class="dialog" role="dialog" aria-modal="true" aria-label={options.title}>
+      <div
+        class="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label={options.title}
+      >
         <h2 class="dialog-title">{options.title}</h2>
-        {options.label ? <label class="dialog-label">{options.label}</label> : null}
+        {options.label ? (
+          <label class="dialog-label">{options.label}</label>
+        ) : null}
         {input}
         {error}
         <div class="dialog-actions">
@@ -90,13 +103,13 @@ export async function promptDialog(options: PromptOptions): Promise<string | nul
             Cancel
           </button>
           <button type="button" class="btn btn-primary" onClick={submit}>
-            {options.confirmLabel ?? 'OK'}
+            {options.confirmLabel ?? "OK"}
           </button>
         </div>
       </div>
     ) as HTMLElement;
   });
-  return typeof result === 'string' ? result : null;
+  return typeof result === "string" ? result : null;
 }
 
 export interface ConfirmOptions {
@@ -108,27 +121,39 @@ export interface ConfirmOptions {
 }
 
 export async function confirmDialog(options: ConfirmOptions): Promise<boolean> {
-  const result = await customDialog((close) => (
-    <div class="dialog" role="alertdialog" aria-modal="true" aria-label={options.title}>
-      <h2 class="dialog-title">{options.title}</h2>
-      <p class="dialog-message">{options.message}</p>
-      <div class="dialog-actions">
-        <button type="button" class="btn" onClick={() => close(false)}>
-          Cancel
-        </button>
-        <button type="button" class={`btn ${options.danger ? 'btn-danger' : 'btn-primary'}`} onClick={() => close(true)}>
-          {options.confirmLabel ?? 'OK'}
-        </button>
-      </div>
-    </div>
-  ) as HTMLElement);
+  const result = await customDialog(
+    (close) =>
+      (
+        <div
+          class="dialog"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label={options.title}
+        >
+          <h2 class="dialog-title">{options.title}</h2>
+          <p class="dialog-message">{options.message}</p>
+          <div class="dialog-actions">
+            <button type="button" class="btn" onClick={() => close(false)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              class={`btn ${options.danger ? "btn-danger" : "btn-primary"}`}
+              onClick={() => close(true)}
+            >
+              {options.confirmLabel ?? "OK"}
+            </button>
+          </div>
+        </div>
+      ) as HTMLElement,
+  );
   return result === true;
 }
 
 export interface ChoiceOption<T> {
   label: string;
   value: T;
-  kind?: 'primary' | 'danger' | 'default';
+  kind?: "primary" | "danger" | "default";
 }
 
 export interface ChoiceOptions<T> {
@@ -142,20 +167,34 @@ export interface ChoiceOptions<T> {
  * Cancel). Resolves with the chosen value, or `undefined` if dismissed (Back,
  * tapping outside), which callers should treat as "stay where I am".
  */
-export async function choiceDialog<T>(options: ChoiceOptions<T>): Promise<T | undefined> {
-  const result = (await customDialog((close) => (
-    <div class="dialog" role="alertdialog" aria-modal="true" aria-label={options.title}>
-      <h2 class="dialog-title">{options.title}</h2>
-      <p class="dialog-message">{options.message}</p>
-      <div class="dialog-stack">
-        {options.choices.map((c) => (
-          <button type="button" class={`btn ${c.kind === 'primary' ? 'btn-primary' : c.kind === 'danger' ? 'btn-danger' : ''}`} onClick={() => close({ value: c.value })}>
-            {c.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  ) as HTMLElement)) as { value: T } | undefined;
+export async function choiceDialog<T>(
+  options: ChoiceOptions<T>,
+): Promise<T | undefined> {
+  const result = (await customDialog(
+    (close) =>
+      (
+        <div
+          class="dialog"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label={options.title}
+        >
+          <h2 class="dialog-title">{options.title}</h2>
+          <p class="dialog-message">{options.message}</p>
+          <div class="dialog-stack">
+            {options.choices.map((c) => (
+              <button
+                type="button"
+                class={`btn ${c.kind === "primary" ? "btn-primary" : c.kind === "danger" ? "btn-danger" : ""}`}
+                onClick={() => close({ value: c.value })}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) as HTMLElement,
+  )) as { value: T } | undefined;
   return result?.value;
 }
 
@@ -168,22 +207,35 @@ export interface SheetItem<T> {
 }
 
 /** A bottom sheet of choices. Resolves with the picked item's value, or undefined if dismissed. */
-export async function sheetDialog<T>(title: string, items: SheetItem<T>[]): Promise<T | undefined> {
-  const result = (await customDialog((close) => (
-    <div class="dialog dialog-sheet" role="menu" aria-label={title}>
-      <h2 class="dialog-title">{title}</h2>
-      <div class="sheet-list">
-        {items.map((item) => (
-          <button type="button" role="menuitem" class={`sheet-item${item.danger ? ' danger' : ''}`} onClick={() => close({ value: item.value })}>
-            {item.icon ? icon(item.icon, 20) : null}
-            <span class="sheet-text">
-              <span class="sheet-label">{item.label}</span>
-              {item.description ? <span class="sheet-desc">{item.description}</span> : null}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  ) as HTMLElement)) as { value: T } | undefined;
+export async function sheetDialog<T>(
+  title: string,
+  items: SheetItem<T>[],
+): Promise<T | undefined> {
+  const result = (await customDialog(
+    (close) =>
+      (
+        <div class="dialog dialog-sheet" role="menu" aria-label={title}>
+          <h2 class="dialog-title">{title}</h2>
+          <div class="sheet-list">
+            {items.map((item) => (
+              <button
+                type="button"
+                role="menuitem"
+                class={`sheet-item${item.danger ? " danger" : ""}`}
+                onClick={() => close({ value: item.value })}
+              >
+                {item.icon ? icon(item.icon, 20) : null}
+                <span class="sheet-text">
+                  <span class="sheet-label">{item.label}</span>
+                  {item.description ? (
+                    <span class="sheet-desc">{item.description}</span>
+                  ) : null}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) as HTMLElement,
+  )) as { value: T } | undefined;
   return result?.value;
 }

@@ -1,9 +1,12 @@
-import path from 'node:path';
-import postcss from 'postcss';
-import postcssImport from 'postcss-import';
-import { transform as lightningTransform, browserslistToTargets } from 'lightningcss';
-import browserslist from 'browserslist';
-import type { Plugin, PluginContext } from 'rolldown';
+import path from "node:path";
+import postcss from "postcss";
+import postcssImport from "postcss-import";
+import {
+  transform as lightningTransform,
+  browserslistToTargets,
+} from "lightningcss";
+import browserslist from "browserslist";
+import type { Plugin, PluginContext } from "rolldown";
 
 export interface CssPluginOptions {
   /** Minify + drop sourcemaps in production builds. */
@@ -40,10 +43,10 @@ export function cssPlugin(options: CssPluginOptions = {}): Plugin {
   const targets = browserslistToTargets(browserslist());
 
   return {
-    name: 'css',
+    name: "css",
 
     async transform(this: PluginContext, code, id) {
-      if (!id.endsWith('.css')) return null;
+      if (!id.endsWith(".css")) return null;
 
       const imported = await postcss([postcssImport()]).process(code, {
         from: id,
@@ -52,7 +55,7 @@ export function cssPlugin(options: CssPluginOptions = {}): Plugin {
 
       // Rebuild when an @import-ed partial changes, not just the entry file.
       for (const message of imported.messages) {
-        if (message.type === 'dependency' && typeof message.file === 'string') {
+        if (message.type === "dependency" && typeof message.file === "string") {
           this.addWatchFile?.(message.file);
         }
       }
@@ -65,7 +68,7 @@ export function cssPlugin(options: CssPluginOptions = {}): Plugin {
       });
 
       this.emitFile({
-        type: 'asset',
+        type: "asset",
         // A `name`, not a `fileName` — the final path/hash is controlled by
         // output.assetFileNames in utils/build/config.ts, same as JS chunks
         // are controlled by output.entryFileNames/chunkFileNames.
@@ -76,7 +79,7 @@ export function cssPlugin(options: CssPluginOptions = {}): Plugin {
       // The .css module contributes no JS of its own — its only job was
       // the emitted asset above. An empty module keeps `import "./app.css"`
       // valid without shipping CSS text into the JS bundle.
-      return { code: 'export default undefined;', map: null };
+      return { code: "export default undefined;", map: null };
     },
   };
 }

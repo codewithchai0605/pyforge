@@ -8,7 +8,7 @@
 // See the "JSX without .jsx/.tsx files" section of README.md for the
 // full write-up, including what this trades away with `tsc`.
 
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath } from "node:url";
 
 /**
  * Per-extension esbuild loader overrides that make JSX syntax parse in
@@ -39,12 +39,12 @@ import { fileURLToPath } from 'node:url';
  * having to name the file `.tsx`.
  */
 export const xtagsLoaders = {
-  '.js': 'jsx',
-  '.jsx': 'jsx',
-  '.mjs': 'jsx',
-  '.ts': 'tsx',
-  '.tsx': 'tsx',
-  '.mts': 'tsx',
+  ".js": "jsx",
+  ".jsx": "jsx",
+  ".mjs": "jsx",
+  ".ts": "tsx",
+  ".tsx": "tsx",
+  ".mts": "tsx",
 };
 
 /**
@@ -54,7 +54,9 @@ export const xtagsLoaders = {
  * your own esbuild options from scratch instead of using
  * `xtagsEsbuildOptions()`; most consumers won't need this directly.
  */
-export const xtagsJsxShimPath = fileURLToPath(new URL('./jsx-shim.ts', import.meta.url));
+export const xtagsJsxShimPath = fileURLToPath(
+  new URL("./jsx-shim.ts", import.meta.url),
+);
 
 /**
  * Spreadable esbuild `BuildOptions` (a plain object — this module never
@@ -98,9 +100,9 @@ export const xtagsJsxShimPath = fileURLToPath(new URL('./jsx-shim.ts', import.me
 export function xtagsEsbuildOptions(overrides = {}) {
   const { loader, inject, ...rest } = overrides;
   return {
-    jsx: 'transform',
-    jsxFactory: 'h',
-    jsxFragment: 'Fragment',
+    jsx: "transform",
+    jsxFactory: "h",
+    jsxFragment: "Fragment",
     loader: { ...xtagsLoaders, ...loader },
     inject: [xtagsJsxShimPath, ...(inject ?? [])],
     ...rest,

@@ -1,6 +1,6 @@
-import { test, before, beforeEach } from 'node:test';
-import assert from 'node:assert/strict';
-import { JSDOM } from 'jsdom';
+import { test, before, beforeEach } from "node:test";
+import assert from "node:assert/strict";
+import { JSDOM } from "jsdom";
 
 /**
  * cordova-plugin-file's real Entry/DirectoryReader/FileWriter objects only
@@ -13,10 +13,10 @@ import { JSDOM } from 'jsdom';
  * actual byte-level work, same objects a real WebView would use.
  */
 
-let windowRef: InstanceType<typeof JSDOM>['window'];
+let windowRef: InstanceType<typeof JSDOM>["window"];
 
 before(() => {
-  const dom = new JSDOM('<!doctype html><html><body></body></html>');
+  const dom = new JSDOM("<!doctype html><html><body></body></html>");
   windowRef = dom.window;
   const g = globalThis as unknown as Record<string, unknown>;
   g.window = dom.window;
@@ -32,7 +32,7 @@ before(() => {
   // we want here regardless.
 });
 
-const { internalFs } = await import('../backends/internal');
+const { internalFs } = await import("../backends/internal");
 
 // --- A minimal in-memory stand-in for cordova-plugin-file's Entry family ---
 
@@ -72,7 +72,9 @@ class FakeFile {
     return `fake:///${this.name}`;
   }
 
-  getMetadata(success: (meta: { size: number; modificationTime: Date }) => void) {
+  getMetadata(
+    success: (meta: { size: number; modificationTime: Date }) => void,
+  ) {
     success({ size: this.blob.size, modificationTime: new Date(0) });
   }
 
@@ -85,7 +87,11 @@ class FakeFile {
     success();
   }
 
-  moveTo(parent: FakeDirectory, newName: string | undefined, success: (entry: FakeFile) => void) {
+  moveTo(
+    parent: FakeDirectory,
+    newName: string | undefined,
+    success: (entry: FakeFile) => void,
+  ) {
     this.parent.children = this.parent.children.filter((c) => c !== this);
     if (newName) this.name = newName;
     this.parent = parent;
@@ -116,25 +122,36 @@ class FakeDirectory {
     return `fake:///${this.name}/`;
   }
 
-  getMetadata(success: (meta: { size: number; modificationTime: Date }) => void) {
+  getMetadata(
+    success: (meta: { size: number; modificationTime: Date }) => void,
+  ) {
     success({ size: 0, modificationTime: new Date(0) });
   }
 
-  getParent(success: (entry: FakeDirectory) => void, error: (err: unknown) => void) {
+  getParent(
+    success: (entry: FakeDirectory) => void,
+    error: (err: unknown) => void,
+  ) {
     if (!this.parent) {
-      error('no parent');
+      error("no parent");
       return;
     }
     success(this.parent);
   }
 
   remove(success: () => void) {
-    if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this);
+    if (this.parent)
+      this.parent.children = this.parent.children.filter((c) => c !== this);
     success();
   }
 
-  moveTo(parent: FakeDirectory, newName: string | undefined, success: (entry: FakeDirectory) => void) {
-    if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this);
+  moveTo(
+    parent: FakeDirectory,
+    newName: string | undefined,
+    success: (entry: FakeDirectory) => void,
+  ) {
+    if (this.parent)
+      this.parent.children = this.parent.children.filter((c) => c !== this);
     if (newName) this.name = newName;
     this.parent = parent;
     parent.children.push(this);
@@ -171,7 +188,7 @@ class FakeDirectory {
       error(`not found: ${name}`);
       return;
     }
-    const created = new FakeFile(name, '', this);
+    const created = new FakeFile(name, "", this);
     this.children.push(created);
     success(created);
   }
@@ -182,7 +199,9 @@ class FakeDirectory {
     success: (entry: FakeDirectory) => void,
     error: (err: unknown) => void,
   ) {
-    const existing = this.children.find((c) => c.name === name && c.isDirectory);
+    const existing = this.children.find(
+      (c) => c.name === name && c.isDirectory,
+    );
     if (existing) {
       success(existing as FakeDirectory);
       return;
@@ -200,7 +219,7 @@ class FakeDirectory {
 let root: FakeDirectory;
 
 beforeEach(() => {
-  root = new FakeDirectory('root');
+  root = new FakeDirectory("root");
 
   function buildIndex(): Map<string, FakeFile | FakeDirectory> {
     const byUrl = new Map<string, FakeFile | FakeDirectory>();
@@ -214,7 +233,9 @@ beforeEach(() => {
     return byUrl;
   }
 
-  (windowRef as unknown as { resolveLocalFileSystemURL: unknown }).resolveLocalFileSystemURL = (
+  (
+    windowRef as unknown as { resolveLocalFileSystemURL: unknown }
+  ).resolveLocalFileSystemURL = (
     url: string,
     success: (entry: unknown) => void,
     error: (err: unknown) => void,
@@ -228,59 +249,63 @@ beforeEach(() => {
   };
 });
 
-test('writeFile then readFile round-trips plain text', async () => {
+test("writeFile then readFile round-trips plain text", async () => {
   const fs = internalFs(root.toURL());
-  const created = await fs.createFile('notes.txt');
+  const created = await fs.createFile("notes.txt");
 
   const file = internalFs(created.url);
-  await file.writeFile('hello world');
-  assert.equal(await file.readFile(), 'hello world');
+  await file.writeFile("hello world");
+  assert.equal(await file.readFile(), "hello world");
 });
 
-test('writeFile overwrites rather than appends (truncate-then-write sequencing)', async () => {
+test("writeFile overwrites rather than appends (truncate-then-write sequencing)", async () => {
   const fs = internalFs(root.toURL());
-  const created = await fs.createFile('notes.txt');
+  const created = await fs.createFile("notes.txt");
   const file = internalFs(created.url);
 
-  await file.writeFile('a much longer first value');
-  await file.writeFile('short');
+  await file.writeFile("a much longer first value");
+  await file.writeFile("short");
 
-  assert.equal(await file.readFile(), 'short', 'leftover bytes from the longer first write must not remain');
+  assert.equal(
+    await file.readFile(),
+    "short",
+    "leftover bytes from the longer first write must not remain",
+  );
 });
 
-test('base64 write/read round-trips exactly, including through real Blob/FileReader', async () => {
+test("base64 write/read round-trips exactly, including through real Blob/FileReader", async () => {
   const fs = internalFs(root.toURL());
-  const created = await fs.createFile('data.bin');
+  const created = await fs.createFile("data.bin");
   const file = internalFs(created.url);
 
-  const original = 'hello \u00e9\u00e8 world'; // includes non-ASCII to exercise byte-level correctness
+  const original = "hello \u00e9\u00e8 world"; // includes non-ASCII to exercise byte-level correctness
   const base64 = btoa(unescape(encodeURIComponent(original)));
 
-  await file.writeFile(base64, 'base64');
-  const roundTripped = await file.readFile('base64');
+  await file.writeFile(base64, "base64");
+  const roundTripped = await file.readFile("base64");
   const decoded = decodeURIComponent(escape(atob(roundTripped)));
 
   assert.equal(roundTripped, base64);
   assert.equal(decoded, original);
 });
 
-test('listDir paginates correctly across multiple readEntries() calls', async () => {
+test("listDir paginates correctly across multiple readEntries() calls", async () => {
   const fs = internalFs(root.toURL());
-  await fs.createFile('a.txt');
-  await fs.createFile('b.txt');
-  await fs.createDirectory('sub');
+  await fs.createFile("a.txt");
+  await fs.createFile("b.txt");
+  await fs.createDirectory("sub");
 
   const entries = await fs.listDir();
   const names = entries.map((e) => e.name).sort();
 
-  assert.deepEqual(names, ['a.txt', 'b.txt', 'sub']);
-  const dirEntry = entries.find((e) => e.name === 'sub');
+  assert.deepEqual(names, ["a.txt", "b.txt", "sub"]);
+  const dirEntry = entries.find((e) => e.name === "sub");
   assert.equal(dirEntry?.isDirectory, true);
 });
 
-test('delete removes the entry', async () => {
+test("delete removes the entry", async () => {
   const fs = internalFs(root.toURL());
-  const created = await fs.createFile('temp.txt');
+  const created = await fs.createFile("temp.txt");
   const file = internalFs(created.url);
 
   assert.equal(await file.exists(), true);
@@ -288,28 +313,28 @@ test('delete removes the entry', async () => {
   assert.equal(await file.exists(), false);
 });
 
-test('rename updates the name and returns the (possibly new) url', async () => {
+test("rename updates the name and returns the (possibly new) url", async () => {
   const fs = internalFs(root.toURL());
-  const created = await fs.createFile('old.txt');
+  const created = await fs.createFile("old.txt");
   const file = internalFs(created.url);
 
-  const renamed = await file.rename('new.txt');
-  assert.equal(renamed.name, 'new.txt');
+  const renamed = await file.rename("new.txt");
+  assert.equal(renamed.name, "new.txt");
 
   const atNewUrl = internalFs(renamed.url);
   assert.equal(await atNewUrl.exists(), true);
 });
 
-test('stat reports isDirectory correctly for both files and directories', async () => {
+test("stat reports isDirectory correctly for both files and directories", async () => {
   const fs = internalFs(root.toURL());
-  const file = await fs.createFile('f.txt');
-  const dir = await fs.createDirectory('d');
+  const file = await fs.createFile("f.txt");
+  const dir = await fs.createDirectory("d");
 
   assert.equal((await internalFs(file.url).stat()).isDirectory, false);
   assert.equal((await internalFs(dir.url).stat()).isDirectory, true);
 });
 
-test('exists() is false for a url that was never created', async () => {
-  const fs = internalFs('fake:///root/does-not-exist.txt');
+test("exists() is false for a url that was never created", async () => {
+  const fs = internalFs("fake:///root/does-not-exist.txt");
   assert.equal(await fs.exists(), false);
 });

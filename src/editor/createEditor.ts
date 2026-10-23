@@ -1,4 +1,4 @@
-import { EditorState, type Extension } from '@codemirror/state';
+import { EditorState, type Extension } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -6,13 +6,30 @@ import {
   highlightActiveLine,
   highlightActiveLineGutter,
   drawSelection,
-} from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete';
-import { bracketMatching, indentOnInput, indentUnit, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
-import { openSearchPanel, search } from '@codemirror/search';
-import { oneDark } from '@codemirror/theme-one-dark';
-import { languageForFilename } from './languages';
+} from "@codemirror/view";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from "@codemirror/commands";
+import {
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+  completionKeymap,
+} from "@codemirror/autocomplete";
+import {
+  bracketMatching,
+  indentOnInput,
+  indentUnit,
+  syntaxHighlighting,
+  defaultHighlightStyle,
+} from "@codemirror/language";
+import { openSearchPanel, search } from "@codemirror/search";
+import { oneDark } from "@codemirror/theme-one-dark";
+import { languageForFilename } from "./languages";
+import { keyModifierInput } from "./modifiers";
 
 /**
  * Extensions every open file's EditorState is built with — not just
@@ -30,7 +47,9 @@ import { languageForFilename } from './languages';
  * editorManager/index.ts's `switchTo` for why it calls `notify()`
  * manually right after.)
  */
-function baseExtensions(onUpdate: (update: { docChanged: boolean; selectionSet: boolean }) => void): Extension[] {
+function baseExtensions(
+  onUpdate: (update: { docChanged: boolean; selectionSet: boolean }) => void,
+): Extension[] {
   return [
     lineNumbers(),
     highlightActiveLine(),
@@ -43,10 +62,18 @@ function baseExtensions(onUpdate: (update: { docChanged: boolean; selectionSet: 
     indentOnInput(),
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     search({ top: true }),
-    keymap.of([...closeBracketsKeymap, ...completionKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
+    // SHFT/CTRL/ALT from the quick-tools bar, applied to typed keys (see modifiers.ts).
+    keyModifierInput(),
+    keymap.of([
+      ...closeBracketsKeymap,
+      ...completionKeymap,
+      ...defaultKeymap,
+      ...historyKeymap,
+      indentWithTab,
+    ]),
     oneDark,
     // Python's convention: four spaces, and Tab/Shift-Tab (indentWithTab) indent by that.
-    indentUnit.of('    '),
+    indentUnit.of("    "),
     EditorState.tabSize.of(4),
     EditorView.lineWrapping,
     EditorView.updateListener.of((update) => {
@@ -76,7 +103,10 @@ export function createFileState(
  *  with a real per-file state as soon as the first file opens (or a fresh
  *  untitled one, if none does). */
 export function createEditorView(host: HTMLElement): EditorView {
-  const placeholder = EditorState.create({ doc: '', extensions: baseExtensions(() => {}) });
+  const placeholder = EditorState.create({
+    doc: "",
+    extensions: baseExtensions(() => {}),
+  });
   return new EditorView({ state: placeholder, parent: host });
 }
 

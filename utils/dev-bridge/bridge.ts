@@ -16,11 +16,15 @@
  *   POST /__py/pip/:id/cancel
  *   GET  /__py/plot?path=...        -> a PNG the program saved (cache dir only)
  */
-import { spawn, execFileSync, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
-import type { IncomingMessage, ServerResponse } from 'node:http';
-import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import {
+  spawn,
+  execFileSync,
+  type ChildProcessWithoutNullStreams,
+} from "node:child_process";
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
 
 export interface BridgeOptions {
   /** Python executable (default: $PYFORGE_PYTHON or python3). */
@@ -31,80 +35,110 @@ export interface BridgeOptions {
   workDir?: string;
 }
 
-const DEFAULT_SRC = path.resolve('src/native-plugins/cordova-plugin-pyruntime/src/android/python');
+const DEFAULT_SRC = path.resolve(
+  "src/native-plugins/cordova-plugin-pyruntime/src/android/python",
+);
 
 async function readBody(req: IncomingMessage): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) chunks.push(chunk as Buffer);
-  return Buffer.concat(chunks).toString('utf8');
+  return Buffer.concat(chunks).toString("utf8");
 }
 
 function insideDir(root: string, candidate: string): boolean {
   const rel = path.relative(root, candidate);
-  return !rel.startsWith('..') && !path.isAbsolute(rel);
+  return !rel.startsWith("..") && !path.isAbsolute(rel);
 }
 
-export function createBridge(options: BridgeOptions = {}): (req: IncomingMessage, res: ServerResponse) => Promise<boolean> {
-  const python = options.python ?? process.env.PYFORGE_PYTHON ?? 'python3';
+export function createBridge(
+  options: BridgeOptions = {},
+): (req: IncomingMessage, res: ServerResponse) => Promise<boolean> {
+  const python = options.python ?? process.env.PYFORGE_PYTHON ?? "python3";
   const pythonSrc = options.pythonSrc ?? DEFAULT_SRC;
-  const work = path.resolve(options.workDir ?? '.pyforge-dev');
+  const work = path.resolve(options.workDir ?? ".pyforge-dev");
   const dirs = {
-    home: path.join(work, 'home'),
-    site: path.join(work, 'site-packages'),
-    projects: path.join(work, 'projects'),
-    cache: path.join(work, 'cache'),
+    home: path.join(work, "home"),
+    site: path.join(work, "site-packages"),
+    projects: path.join(work, "projects"),
+    cache: path.join(work, "cache"),
   };
   for (const d of Object.values(dirs)) mkdirSync(d, { recursive: true });
 
-  const env = { ...process.env, PYTHONPATH: pythonSrc, PYTHONUNBUFFERED: '1' };
-  const hostArgs = ['-u', '-m', 'pyforge.host', '--home', dirs.home, '--site', dirs.site, '--projects', dirs.projects, '--cache', dirs.cache];
+  const env = { ...process.env, PYTHONPATH: pythonSrc, PYTHONUNBUFFERED: "1" };
+  const hostArgs = [
+    "-u",
+    "-m",
+    "pyforge.host",
+    "--home",
+    dirs.home,
+    "--site",
+    dirs.site,
+    "--projects",
+    dirs.projects,
+    "--cache",
+    dirs.cache,
+  ];
   const runs = new Map<string, ChildProcessWithoutNullStreams>();
   const pips = new Map<string, ChildProcessWithoutNullStreams>();
   let versionCache: string | null = null;
 
   const pythonVersion = (): string => {
     if (!versionCache) {
-      versionCache = execFileSync(python, ['-c', 'import sys;print(sys.version.split()[0])'], { encoding: 'utf8' }).trim();
+      versionCache = execFileSync(
+        python,
+        ["-c", "import sys;print(sys.version.split()[0])"],
+        { encoding: "utf8" },
+      ).trim();
     }
     return versionCache;
   };
 
   /** Resolve a client-supplied relative path inside the projects dir. */
   const inProjects = (rel: string): string => {
-    const abs = path.resolve(dirs.projects, rel.replace(/^\/+/, ''));
-    if (!insideDir(dirs.projects, abs)) throw new Error(`path escapes the workspace: ${rel}`);
+    const abs = path.resolve(dirs.projects, rel.replace(/^\/+/, ""));
+    if (!insideDir(dirs.projects, abs))
+      throw new Error(`path escapes the workspace: ${rel}`);
     return abs;
   };
 
   const json = (res: ServerResponse, code: number, body: unknown): void => {
-    res.writeHead(code, { 'content-type': 'application/json' });
+    res.writeHead(code, { "content-type": "application/json" });
     res.end(JSON.stringify(body));
   };
 
   return async (req, res) => {
-    const url = new URL(req.url ?? '/', 'http://localhost');
-    if (!url.pathname.startsWith('/__py/')) return false;
-    const route = url.pathname.slice('/__py'.length);
+    const url = new URL(req.url ?? "/", "http://localhost");
+    if (!url.pathname.startsWith("/__py/")) return false;
+    const route = url.pathname.slice("/__py".length);
 
     try {
-      if (req.method === 'GET' && route === '/ping') {
+      if (req.method === "GET" && route === "/ping") {
         json(res, 200, {
-          python: pythonVersion(), android: false, abi: null, api: 0,
-          cp: `cp${pythonVersion().split('.').slice(0, 2).join('')}`, site: dirs.site, projects: dirs.projects,
+          python: pythonVersion(),
+          android: false,
+          abi: null,
+          api: 0,
+          cp: `cp${pythonVersion().split(".").slice(0, 2).join("")}`,
+          site: dirs.site,
+          projects: dirs.projects,
         });
         return true;
       }
 
-      if (req.method === 'GET' && route === '/plot') {
-        const file = path.resolve(url.searchParams.get('path') ?? '');
-        if (!insideDir(dirs.cache, file) || !existsSync(file)) return json(res, 404, { error: 'not found' }), true;
-        res.writeHead(200, { 'content-type': 'image/png' });
+      if (req.method === "GET" && route === "/plot") {
+        const file = path.resolve(url.searchParams.get("path") ?? "");
+        if (!insideDir(dirs.cache, file) || !existsSync(file))
+          return (json(res, 404, { error: "not found" }), true);
+        res.writeHead(200, { "content-type": "image/png" });
         res.end(readFileSync(file));
         return true;
       }
 
-      if (req.method === 'POST' && route === '/run') {
-        const body = JSON.parse(await readBody(req)) as Record<string, unknown> & { files?: Record<string, string> };
+      if (req.method === "POST" && route === "/run") {
+        const body = JSON.parse(await readBody(req)) as Record<
+          string,
+          unknown
+        > & { files?: Record<string, string> };
         for (const [rel, content] of Object.entries(body.files ?? {})) {
           const abs = inProjects(rel);
           mkdirSync(path.dirname(abs), { recursive: true });
@@ -112,53 +146,83 @@ export function createBridge(options: BridgeOptions = {}): (req: IncomingMessage
         }
         const request = { ...body };
         delete request.files;
-        if (typeof request.path === 'string') request.path = inProjects(request.path);
-        if (typeof request.cwd === 'string') request.cwd = inProjects(request.cwd);
-        else if (request.mode !== 'repl') request.cwd = typeof request.path === 'string' ? path.dirname(request.path) : dirs.projects;
+        if (typeof request.path === "string")
+          request.path = inProjects(request.path);
+        if (typeof request.cwd === "string")
+          request.cwd = inProjects(request.cwd);
+        else if (request.mode !== "repl")
+          request.cwd =
+            typeof request.path === "string"
+              ? path.dirname(request.path)
+              : dirs.projects;
 
         const id = randomUUID();
         const child = spawn(python, hostArgs, { env, cwd: work });
         runs.set(id, child);
-        child.on('close', () => runs.delete(id));
-        child.stderr.on('data', (d: Buffer) => process.stderr.write(`[py host] ${d}`));
-        child.stdin.on('error', () => {});
+        child.on("close", () => runs.delete(id));
+        child.stderr.on("data", (d: Buffer) =>
+          process.stderr.write(`[py host] ${d}`),
+        );
+        child.stdin.on("error", () => {});
         // nosniff: without it WebKit buffers an open streaming response while it
         // sniffs the type, so live output wouldn't appear until the program ended.
-        res.writeHead(200, { 'content-type': 'application/x-ndjson', 'x-content-type-options': 'nosniff', 'x-run-id': id, 'cache-control': 'no-store' });
+        res.writeHead(200, {
+          "content-type": "application/x-ndjson",
+          "x-content-type-options": "nosniff",
+          "x-run-id": id,
+          "cache-control": "no-store",
+        });
         child.stdout.pipe(res);
-        res.on('close', () => child.kill('SIGKILL'));
-        child.stdin.write(JSON.stringify({ op: 'run', req: request }) + '\n');
+        res.on("close", () => child.kill("SIGKILL"));
+        child.stdin.write(JSON.stringify({ op: "run", req: request }) + "\n");
         return true;
       }
 
       const m = /^\/runs\/([^/]+)\/(stdin|gui|stop)$/.exec(route);
-      if (req.method === 'POST' && m) {
+      if (req.method === "POST" && m) {
         const child = runs.get(m[1]!);
-        if (!child) return json(res, 404, { error: 'no such run' }), true;
-        const payload = m[2] === 'stop' ? {} : (JSON.parse(await readBody(req)) as Record<string, unknown>);
-        if (m[2] === 'stop') child.kill('SIGKILL');
-        else child.stdin.write(JSON.stringify({ op: m[2], ...payload }) + '\n');
+        if (!child) return (json(res, 404, { error: "no such run" }), true);
+        const payload =
+          m[2] === "stop"
+            ? {}
+            : (JSON.parse(await readBody(req)) as Record<string, unknown>);
+        if (m[2] === "stop") child.kill("SIGKILL");
+        else child.stdin.write(JSON.stringify({ op: m[2], ...payload }) + "\n");
         json(res, 200, { ok: true });
         return true;
       }
 
-      if (req.method === 'POST' && route === '/pip') {
-        const { call, args } = JSON.parse(await readBody(req)) as { call: string; args: unknown };
+      if (req.method === "POST" && route === "/pip") {
+        const { call, args } = JSON.parse(await readBody(req)) as {
+          call: string;
+          args: unknown;
+        };
         const id = randomUUID();
-        const child = spawn(python, [...hostArgs, '--pip', call, JSON.stringify(args ?? {})], { env, cwd: work });
+        const child = spawn(
+          python,
+          [...hostArgs, "--pip", call, JSON.stringify(args ?? {})],
+          { env, cwd: work },
+        );
         pips.set(id, child);
-        child.on('close', () => pips.delete(id));
-        child.stdin.on('error', () => {});
-        child.stderr.on('data', (d: Buffer) => process.stderr.write(`[py pip] ${d}`));
-        res.writeHead(200, { 'content-type': 'application/x-ndjson', 'x-content-type-options': 'nosniff', 'x-pip-id': id, 'cache-control': 'no-store' });
+        child.on("close", () => pips.delete(id));
+        child.stdin.on("error", () => {});
+        child.stderr.on("data", (d: Buffer) =>
+          process.stderr.write(`[py pip] ${d}`),
+        );
+        res.writeHead(200, {
+          "content-type": "application/x-ndjson",
+          "x-content-type-options": "nosniff",
+          "x-pip-id": id,
+          "cache-control": "no-store",
+        });
         child.stdout.pipe(res);
-        res.on('close', () => child.kill());
+        res.on("close", () => child.kill());
         return true;
       }
 
       const cancelMatch = /^\/pip\/([^/]+)\/cancel$/.exec(route);
-      if (req.method === 'POST' && cancelMatch) {
-        pips.get(cancelMatch[1]!)?.stdin.write('cancel\n');
+      if (req.method === "POST" && cancelMatch) {
+        pips.get(cancelMatch[1]!)?.stdin.write("cancel\n");
         json(res, 200, { ok: true });
         return true;
       }
@@ -166,7 +230,9 @@ export function createBridge(options: BridgeOptions = {}): (req: IncomingMessage
       json(res, 404, { error: `unknown bridge route ${route}` });
       return true;
     } catch (err) {
-      json(res, 500, { error: err instanceof Error ? err.message : String(err) });
+      json(res, 500, {
+        error: err instanceof Error ? err.message : String(err),
+      });
       return true;
     }
   };

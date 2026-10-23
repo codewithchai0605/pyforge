@@ -11,13 +11,17 @@
   background: var(--bg);
   transform: translateX(100%);
   visibility: hidden;
-  transition: transform 0.26s var(--ease), visibility 0s 0.26s;
+  transition:
+    transform 0.26s var(--ease),
+    visibility 0s 0.26s;
 }
 
 .page.open {
   transform: none;
   visibility: visible;
-  transition: transform 0.26s var(--ease), visibility 0s;
+  transition:
+    transform 0.26s var(--ease),
+    visibility 0s;
 }
 
 /* A page with another page pushed on top: it stays mounted (scroll position,
@@ -284,7 +288,7 @@
 }
 
 .switch::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 3px;
   left: 3px;

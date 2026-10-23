@@ -4,22 +4,22 @@ A Python IDE for Android, built with Cordova. Write Python in a CodeMirror 6 edi
 run it on a real embedded CPython, see output / `input()` / **turtle graphics** /
 **matplotlib plots**, and install packages with one tap.
 
-* **Editor:** CodeMirror 6 with Python highlighting, auto-save, pinch-to-resize font, 4-space indentation, completion
+- **Editor:** CodeMirror 6 with Python highlighting, auto-save, pinch-to-resize font, 4-space indentation, completion
   (keywords, builtins, module names, snippets), and a Python-symbol key strip above the
   keyboard (`: ( ) [ ] { } _ #`, Tab, arrow keys, undo/redo, comment toggle).
-* **Python:** CPython 3.13 via [Chaquopy](https://chaquo.com/chaquopy/) 17.1, run in an
+- **Python:** CPython 3.13 via [Chaquopy](https://chaquo.com/chaquopy/) 17.1, run in an
   **isolated process**: Stop is a hard kill (infinite loops, blocking C calls), a native
   crash can't take the editor down, and every run starts with a fresh interpreter.
-* **Graphics:** a `turtle` module with the standard API that draws on an HTML canvas
+- **Graphics:** a `turtle` module with the standard API that draws on an HTML canvas
   (Android has no Tk, so the real one can't work), and a matplotlib backend that turns
   `plt.show()` into an image.
-* **Packages:** a Packages page that installs/uninstalls from PyPI (pure-Python wheels, and
+- **Packages:** a Packages page that installs/uninstalls from PyPI (pure-Python wheels, and
   Android wheels where they exist) with live progress and a **Cancel** button that stops a
   download on the fly without leaving anything half-installed.
-* **Navigation:** a real page stack (Home → Packages → Settings; Back returns to where you
+- **Navigation:** a real page stack (Home → Packages → Settings; Back returns to where you
   came from) and an exit flow on Back from Home: a confirmation, or Save / Discard / Stay
   when files are unsaved.
-* **Files:** an app-private workspace (real paths, so imports and file I/O work),
+- **Files:** an app-private workspace (real paths, so imports and file I/O work),
   rename/delete/new-from-template, find-in-files, and optionally an external folder via
   Android's Storage Access Framework.
 
@@ -27,11 +27,11 @@ run it on a real embedded CPython, see output / `input()` / **turtle graphics** 
 
 You need (versions as tested against cordova-android 15):
 
-| Tool | Notes |
-|---|---|
-| Node 20+ | `npm install` |
-| JDK 17+ | Gradle 8.14 / AGP 8.10 |
-| Android SDK | platform 36, build-tools; set `ANDROID_HOME` |
+| Tool                                 | Notes                                                                                                                                                 |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Node 20+                             | `npm install`                                                                                                                                         |
+| JDK 17+                              | Gradle 8.14 / AGP 8.10                                                                                                                                |
+| Android SDK                          | platform 36, build-tools; set `ANDROID_HOME`                                                                                                          |
 | **Python 3.13 on the build machine** | Chaquopy runs pip with it; must match the app's Python. Not on `PATH`? set `PYFORGE_BUILD_PYTHON=/path/to/python3.13` (or `-PpyforgeBuildPython=...`) |
 
 ```bash
@@ -49,11 +49,11 @@ with the default setup; see "Python version" in
 
 ### Bundling numpy / matplotlib / pillow
 
-Packages with compiled code are only *officially* supported by Chaquopy when baked into
+Packages with compiled code are only _officially_ supported by Chaquopy when baked into
 the APK at build time. Edit `python/requirements.txt` and uncomment what you want. They're
 commented out by default **on purpose**: if any line has no wheel for the app's Python
 version, the whole Gradle build fails. Enable them one at a time. (The Packages page can
-also *try* to install compiled wheels at runtime; see "Honest status".)
+also _try_ to install compiled wheels at runtime; see "Honest status".)
 
 ## Develop in a desktop browser
 
@@ -62,7 +62,7 @@ npm run dev               # builds, serves http://localhost:8000, watches
 ```
 
 The preview runs your **desktop Python** behind a small bridge (`/__py/*`, see
-`utils/dev-bridge/bridge.ts`), using the *same* `pyforge` package that ships in the APK, so
+`utils/dev-bridge/bridge.ts`), using the _same_ `pyforge` package that ships in the APK, so
 run/stop/`input()`/turtle/plots/packages all work, with an in-memory file system. Python 3
 with `packaging` is required (`PYFORGE_PYTHON=/path/to/python` to choose). Esc = Back,
 Ctrl/Cmd+Enter = Run/Stop, Ctrl/Cmd+S = Save.
@@ -93,14 +93,14 @@ otherwise). `PYFORGE_PYTHON` selects the interpreter for the TS tests.
  pyruntime.ts  → cordovaRuntime | devRuntime (desktop bridge) | noneRuntime
 ```
 
-* **Event protocol** (`pyforge/core.py`, mirrored in `src/python/protocol.ts`): one JSON
+- **Event protocol** (`pyforge/core.py`, mirrored in `src/python/protocol.ts`): one JSON
   line per event: `out`, `err`, `input`, `gui` (turtle commands), `img`, `exit`.
-* **Why a separate process:** see `PythonRunnerService.kt`. Two service classes alternate so
+- **Why a separate process:** see `PythonRunnerService.kt`. Two service classes alternate so
   tapping Run right after Stop never races a dying process.
-* **Turtle:** Python owns all state and geometry (so `pos()`, `heading()`, `distance()`
+- **Turtle:** Python owns all state and geometry (so `pos()`, `heading()`, `distance()`
   answer instantly); it emits compact draw commands and sleeps for the animation time. The
   UI (`turtleScene.ts`) animates them on per-turtle layers.
-* **Package manager** (`pkgmgr.py`): PEP 691 JSON index → newest loadable wheel → sha256-verified
+- **Package manager** (`pkgmgr.py`): PEP 691 JSON index → newest loadable wheel → sha256-verified
   download → dependencies from the wheel's METADATA → unzip into
   `files/pyforge/site-packages`. On Android it accepts **only** pure wheels and
   `android_<api>_<abi>` wheels for this device; it will never install a `manylinux` wheel
@@ -111,38 +111,38 @@ otherwise). `PYFORGE_PYTHON` selects the interpreter for the TS tests.
 Everything below was built and tested in a Linux sandbox **without an Android SDK, device
 or emulator**.
 
-| Verified (automated, real execution) | Not verified on a device |
-|---|---|
-| All Python code: 56 pytest tests against a real host process, incl. a fake PyPI and cancellation | The Gradle script (`pyruntime.gradle`) against real Chaquopy 17.1 / AGP |
-| Kotlin: compiles with the real Kotlin 2.1.21 compiler *against stubs I wrote* of the Android/Cordova/Chaquopy APIs | The Kotlin against the real SDK jars; Chaquopy ⇄ Kotlin calls at runtime |
-| Cordova integration: the real Cordova 13 CLI generates the Android project correctly (sources, manifest, services, Gradle hook, icons) | Binder messaging, process kill/restart, Python start-up time on a phone |
-| TS ⇄ Python end to end (run, `input()`, stop, turtle, matplotlib, pip) via the dev bridge | The Cordova bridge path (`cordovaRuntime`) on a device |
-| UI rendered in a real browser engine (WebKitGTK) at phone size and driven through the main flows | Android WebView specifics: keyboard insets, touch/long-press, edge-to-edge |
+| Verified (automated, real execution)                                                                                                   | Not verified on a device                                                   |
+| -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| All Python code: 56 pytest tests against a real host process, incl. a fake PyPI and cancellation                                       | The Gradle script (`pyruntime.gradle`) against real Chaquopy 17.1 / AGP    |
+| Kotlin: compiles with the real Kotlin 2.1.21 compiler _against stubs I wrote_ of the Android/Cordova/Chaquopy APIs                     | The Kotlin against the real SDK jars; Chaquopy ⇄ Kotlin calls at runtime   |
+| Cordova integration: the real Cordova 13 CLI generates the Android project correctly (sources, manifest, services, Gradle hook, icons) | Binder messaging, process kill/restart, Python start-up time on a phone    |
+| TS ⇄ Python end to end (run, `input()`, stop, turtle, matplotlib, pip) via the dev bridge                                              | The Cordova bridge path (`cordovaRuntime`) on a device                     |
+| UI rendered in a real browser engine (WebKitGTK) at phone size and driven through the main flows                                       | Android WebView specifics: keyboard insets, touch/long-press, edge-to-edge |
 
 Known limits and risks:
 
-* **Runtime install of compiled wheels is best-effort.** Chaquopy has no runtime pip; this is
+- **Runtime install of compiled wheels is best-effort.** Chaquopy has no runtime pip; this is
   my own installer. Pure-Python packages are the reliable path. Native wheels need an Android
   build to exist, and their shared-library dependencies (`chaquopy/lib/*.so`) are pre-loaded
   via `ctypes`, which I could not test on a device. Bundle important compiled packages in
   `python/requirements.txt` instead.
-* **Seen working on a real phone** (user's screenshots): app start, Python 3.13 on arm64, run/console,
+- **Seen working on a real phone** (user's screenshots): app start, Python 3.13 on arm64, run/console,
   the Packages page and a PyPI install starting. **Not yet confirmed on a device:** the inset
   measurement that removes the blank band under the status bar, native zoom disabling, Cancel on a
   real download, and the Android Back chain.
-* **No terminal yet.** A real terminal (xterm.js + native PTY + Debian/Ubuntu via proot) is designed
+- **No terminal yet.** A real terminal (xterm.js + native PTY + Debian/Ubuntu via proot) is designed
   and researched but intentionally not built; see DEVELOPMENT.md.
-* **No `tkinter`.** `import tkinter` raises a clear ImportError. Use `turtle` or matplotlib.
+- **No `tkinter`.** `import tkinter` raises a clear ImportError. Use `turtle` or matplotlib.
   pygame/Kivy-style apps aren't supported.
-* **turtle differences:** `undo()` restores position/heading but doesn't erase drawings;
+- **turtle differences:** `undo()` restores position/heading but doesn't erase drawings;
   `getcanvas()`, `bgpic()` and image shapes aren't supported. Key-driven turtle programs get
   an on-screen key pad automatically.
-* **Backgrounding:** Android may freeze or kill a long-running script if you leave the app
+- **Backgrounding:** Android may freeze or kill a long-running script if you leave the app
   (there's no foreground service yet). Files are auto-saved when the app is paused.
-* **External (SAF) folders** can be browsed and edited, but a script in one runs from a copy of
+- **External (SAF) folders** can be browsed and edited, but a script in one runs from a copy of
   the editor buffer: sibling imports from that folder won't resolve. Use the workspace for
   multi-file projects.
-* Dark theme only. Console output is capped at 4000 lines.
+- Dark theme only. Console output is capped at 4000 lines.
 
 ## What changed from the original project
 

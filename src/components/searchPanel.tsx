@@ -1,7 +1,7 @@
-import { For, Show, computed, signal } from 'xtags';
-import { fsOperation } from '@/fileSystem';
-import { walkFiles } from '@/fileSystem/walk';
-import { icon } from './icons';
+import { For, Show, computed, signal } from "xtags";
+import { fsOperation } from "@/fileSystem";
+import { walkFiles } from "@/fileSystem/walk";
+import { icon } from "./icons";
 
 export interface SearchMatch {
   /** 1-based line number. */
@@ -20,26 +20,41 @@ export interface SearchOptions {
 const MAX_MATCHES_PER_FILE = 100;
 
 /** Finds every match of `query` in `text`. Throws a readable Error for an invalid regex. */
-export function searchText(text: string, query: string, { matchCase, regex }: SearchOptions): SearchMatch[] {
+export function searchText(
+  text: string,
+  query: string,
+  { matchCase, regex }: SearchOptions,
+): SearchMatch[] {
   let re: RegExp;
   try {
-    const source = regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    re = new RegExp(source, matchCase ? 'g' : 'gi');
+    const source = regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    re = new RegExp(source, matchCase ? "g" : "gi");
   } catch (e) {
-    throw new Error(`Invalid pattern: ${e instanceof Error ? e.message : String(e)}`);
+    throw new Error(
+      `Invalid pattern: ${e instanceof Error ? e.message : String(e)}`,
+    );
   }
   const matches: SearchMatch[] = [];
   const lines = text.split(/\r?\n/);
-  for (let i = 0; i < lines.length && matches.length < MAX_MATCHES_PER_FILE; i++) {
+  for (
+    let i = 0;
+    i < lines.length && matches.length < MAX_MATCHES_PER_FILE;
+    i++
+  ) {
     const lineText = lines[i]!;
     re.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = re.exec(lineText)) !== null) {
-      if (m[0] === '') {
+      if (m[0] === "") {
         re.lastIndex++; // zero-width match (e.g. /^/): don't loop forever
         continue;
       }
-      matches.push({ line: i + 1, lineText: lineText.slice(0, 400), start: m.index, end: m.index + m[0].length });
+      matches.push({
+        line: i + 1,
+        lineText: lineText.slice(0, 400),
+        start: m.index,
+        end: m.index + m[0].length,
+      });
       if (matches.length >= MAX_MATCHES_PER_FILE) break;
     }
   }
@@ -66,8 +81,10 @@ export type SearchPanelElement = HTMLElement & { focusInput(): void };
 const MAX_FILES_TO_SEARCH = 300;
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
 
-export function createSearchPanel(options: SearchPanelOptions): SearchPanelElement {
-  const pattern = signal('');
+export function createSearchPanel(
+  options: SearchPanelOptions,
+): SearchPanelElement {
+  const pattern = signal("");
   const matchCase = signal(false);
   const regex = signal(false);
   const searching = signal(false);
@@ -103,10 +120,19 @@ export function createSearchPanel(options: SearchPanelOptions): SearchPanelEleme
         } catch {
           continue; // unreadable or binary: skip it, don't fail the whole search
         }
-        if (text.includes('\u0000')) continue; // binary
+        if (text.includes("\u0000")) continue; // binary
         try {
-          const matches = searchText(text, query, { matchCase: matchCase.peek(), regex: regex.peek() });
-          if (matches.length) found.push({ path: file.path, url: file.url, name: file.name, matches });
+          const matches = searchText(text, query, {
+            matchCase: matchCase.peek(),
+            regex: regex.peek(),
+          });
+          if (matches.length)
+            found.push({
+              path: file.path,
+              url: file.url,
+              name: file.name,
+              matches,
+            });
         } catch (err) {
           // A bad pattern is a property of the search, not of any one file.
           errorMessage.set(err instanceof Error ? err.message : String(err));
@@ -122,22 +148,26 @@ export function createSearchPanel(options: SearchPanelOptions): SearchPanelEleme
   }
 
   const summary = computed(() => {
-    if (searching()) return 'Searching…';
-    if (errorMessage()) return '';
-    if (!hasSearched()) return 'Search every file in the open folder.';
+    if (searching()) return "Searching…";
+    if (errorMessage()) return "";
+    if (!hasSearched()) return "Search every file in the open folder.";
     const total = results().reduce((n, f) => n + f.matches.length, 0);
     const files = results().length;
-    const note = truncated() ? ` (stopped after ${filesScanned()} files)` : '';
+    const note = truncated() ? ` (stopped after ${filesScanned()} files)` : "";
     return total === 0
       ? `No matches in ${filesScanned()} files${note}`
-      : `${total} match${total === 1 ? '' : 'es'} in ${files} file${files === 1 ? '' : 's'}${note}`;
+      : `${total} match${total === 1 ? "" : "es"} in ${files} file${files === 1 ? "" : "s"}${note}`;
   });
 
-  const toggle = (label: string, title: string, sig: typeof matchCase): HTMLElement =>
+  const toggle = (
+    label: string,
+    title: string,
+    sig: typeof matchCase,
+  ): HTMLElement =>
     (
       <button
         type="button"
-        class={computed(() => ({ 'chip-toggle': true, on: sig() }))}
+        class={computed(() => ({ "chip-toggle": true, on: sig() }))}
         title={title}
         aria-pressed={computed(() => String(sig()))}
         onClick={() => sig.update((v) => !v)}
@@ -165,16 +195,22 @@ export function createSearchPanel(options: SearchPanelOptions): SearchPanelEleme
             inputEl = el as HTMLInputElement;
           }}
           onKeyDown={(e: KeyboardEvent) => {
-            if (e.key === 'Enter') void runSearch();
+            if (e.key === "Enter") void runSearch();
           }}
         />
-        <button type="button" class="icon-btn accent" title="Search" aria-label="Search" onClick={() => void runSearch()}>
-          {icon('search', 20)}
+        <button
+          type="button"
+          class="icon-btn accent"
+          title="Search"
+          aria-label="Search"
+          onClick={() => void runSearch()}
+        >
+          {icon("search", 20)}
         </button>
       </div>
       <div class="search-options">
-        {toggle('Aa', 'Match case', matchCase)}
-        {toggle('.*', 'Regular expression', regex)}
+        {toggle("Aa", "Match case", matchCase)}
+        {toggle(".*", "Regular expression", regex)}
       </div>
       <div class="search-summary">{summary}</div>
       <Show when={() => !!errorMessage()}>
@@ -186,7 +222,13 @@ export function createSearchPanel(options: SearchPanelOptions): SearchPanelEleme
             <div class="search-file-group">
               <div class="search-file-path">{file.path}</div>
               {file.matches.map((m) => (
-                <button type="button" class="search-match" onClick={() => options.onOpenMatch(file.url, file.name, m.line)}>
+                <button
+                  type="button"
+                  class="search-match"
+                  onClick={() =>
+                    options.onOpenMatch(file.url, file.name, m.line)
+                  }
+                >
                   <span class="search-match-line">{`${m.line}`}</span>
                   <span class="search-match-text">
                     {m.lineText.slice(Math.max(0, m.start - 30), m.start)}

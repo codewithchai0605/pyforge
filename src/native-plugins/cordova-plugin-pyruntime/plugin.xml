@@ -22,6 +22,10 @@
              own config.xml; both are harmless together.) -->
         <config-file target="config.xml" parent="/*">
             <preference name="GradlePluginKotlinEnabled" value="true" />
+            <!-- Use PyForgeWebView (a SystemWebView that can hide Android's own
+                 selection bar; see PyForgeWebView.kt). Also set in the app's
+                 own config.xml, like the line above. -->
+            <preference name="webview" value="com.pyforge.pyruntime.PyForgeWebViewEngine" />
         </config-file>
 
         <config-file target="AndroidManifest.xml" parent="/manifest">
@@ -43,6 +47,7 @@
         <source-file src="src/android/PyRuntimePlugin.kt" target-dir="app/src/main/kotlin/com/pyforge/pyruntime" />
         <source-file src="src/android/PythonRunnerService.kt" target-dir="app/src/main/kotlin/com/pyforge/pyruntime" />
         <source-file src="src/android/PySink.kt" target-dir="app/src/main/kotlin/com/pyforge/pyruntime" />
+        <source-file src="src/android/PyForgeWebView.kt" target-dir="app/src/main/kotlin/com/pyforge/pyruntime" />
 
         <!-- Python sources, picked up by Chaquopy from app/src/main/python.
              (Generated from the file tree; tests/python/test_plugin_xml.py

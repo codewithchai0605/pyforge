@@ -4,8 +4,13 @@
   "description": "Storage Access Framework (scoped storage) access for Android — pick a folder, list/read/write/create/delete/rename documents in it.",
   "cordova": {
     "id": "cordova-plugin-saf",
-    "platforms": ["android"]
+    "platforms": [
+      "android"
+    ]
   },
-  "keywords": ["ecosystem:cordova", "cordova-android"],
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
   "license": "Apache-2.0"
 }

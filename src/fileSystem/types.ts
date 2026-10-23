@@ -40,8 +40,8 @@ export interface FsOperation {
   /** Only valid when stat().isDirectory is true. */
   listDir(): Promise<FileEntry[]>;
 
-  readFile(encoding?: 'utf8' | 'base64'): Promise<string>;
-  writeFile(content: string, encoding?: 'utf8' | 'base64'): Promise<void>;
+  readFile(encoding?: "utf8" | "base64"): Promise<string>;
+  writeFile(content: string, encoding?: "utf8" | "base64"): Promise<void>;
 
   createFile(name: string, mimeType?: string): Promise<FileEntry>;
   createDirectory(name: string): Promise<FileEntry>;

@@ -8,12 +8,12 @@
  * esbuild.mjs for the full explanation.
  */
 export const xtagsLoaders: {
-  '.js': 'jsx';
-  '.jsx': 'jsx';
-  '.mjs': 'jsx';
-  '.ts': 'tsx';
-  '.tsx': 'tsx';
-  '.mts': 'tsx';
+  ".js": "jsx";
+  ".jsx": "jsx";
+  ".mjs": "jsx";
+  ".ts": "tsx";
+  ".tsx": "tsx";
+  ".mts": "tsx";
 };
 
 /** Filesystem path to jsx-shim.ts, next to esbuild.mjs. */
@@ -32,4 +32,6 @@ export interface XtagsEsbuildOverrides {
  * `h`/`Fragment` so files using JSX don't need to import them. See
  * esbuild.mjs for the full explanation and a usage example.
  */
-export function xtagsEsbuildOptions(overrides?: XtagsEsbuildOverrides): Record<string, unknown>;
+export function xtagsEsbuildOptions(
+  overrides?: XtagsEsbuildOverrides,
+): Record<string, unknown>;

@@ -1,9 +1,9 @@
-import { saf, type SafEntry } from '@/native/saf';
-import type { FileEntry, FileStats, FsOperation } from '../types';
+import { saf, type SafEntry } from "@/native/saf";
+import type { FileEntry, FileStats, FsOperation } from "../types";
 
 function toFileEntry(entry: SafEntry): FileEntry {
   return {
-    name: entry.name ?? '',
+    name: entry.name ?? "",
     isDirectory: entry.isDirectory,
     url: entry.url,
     size: entry.size,
@@ -14,7 +14,7 @@ function toFileEntry(entry: SafEntry): FileEntry {
 
 function toFileStats(entry: SafEntry): FileStats {
   return {
-    name: entry.name ?? '',
+    name: entry.name ?? "",
     isDirectory: entry.isDirectory,
     size: entry.size,
     lastModified: entry.lastModified,
@@ -46,11 +46,11 @@ export function externalFs(url: string): FsOperation {
       return entries.map(toFileEntry);
     },
 
-    async readFile(encoding: 'utf8' | 'base64' = 'utf8') {
+    async readFile(encoding: "utf8" | "base64" = "utf8") {
       return saf.readFile(url, encoding);
     },
 
-    async writeFile(content: string, encoding: 'utf8' | 'base64' = 'utf8') {
+    async writeFile(content: string, encoding: "utf8" | "base64" = "utf8") {
       await saf.writeFile(url, content, encoding);
     },
 

@@ -19,6 +19,10 @@
         <preference name="AndroidXEnabled" value="true" />
         <preference name="android-minSdkVersion" value="24" />
         <preference name="android-targetSdkVersion" value="36" />
+        <!-- The pyruntime plugin's WebView: same as Cordova's, plus it can hide
+             Android's own selection bar so the app's selection menu shows
+             alone (see PyForgeWebView.kt). Also set by the plugin itself. -->
+        <preference name="webview" value="com.pyforge.pyruntime.PyForgeWebViewEngine" />
         <!-- The system bars' look is controlled by the app's own CSS background. -->
         <content src="index.html" />
         <icon density="ldpi" src="res/android/mipmap-mdpi/ic_launcher.png" />

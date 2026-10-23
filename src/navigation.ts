@@ -1,5 +1,5 @@
-import { computed, signal, type Signal } from 'xtags';
-import { pushBack } from '@/components/backStack';
+import { computed, signal, type Signal } from "xtags";
+import { pushBack } from "@/components/backStack";
 
 /**
  * Page-level navigation, as a stack.
@@ -16,7 +16,7 @@ import { pushBack } from '@/components/backStack';
  * registers with backStack.ts, so Back always closes whichever layer was
  * opened most recently (a page opened over the output sheet closes before it).
  */
-export type RouteName = 'home' | 'packages' | 'settings';
+export type RouteName = "home" | "packages" | "settings";
 
 export interface Router {
   /** Bottom → top. Always starts with 'home'. */
@@ -34,7 +34,7 @@ export interface Router {
 }
 
 export function createRouter(): Router {
-  const stack = signal<RouteName[]>(['home']);
+  const stack = signal<RouteName[]>(["home"]);
   const current = computed(() => stack()[stack().length - 1]!);
   const canGoBack = computed(() => stack().length > 1);
   /** One entry on the shared Back order per open page. */
@@ -49,7 +49,11 @@ export function createRouter(): Router {
       }
     }
     for (const route of next) {
-      if (route !== 'home' && !backEntries.has(route)) backEntries.set(route, pushBack(() => router.pop()));
+      if (route !== "home" && !backEntries.has(route))
+        backEntries.set(
+          route,
+          pushBack(() => router.pop()),
+        );
     }
     stack.set(next);
   }
@@ -74,7 +78,7 @@ export function createRouter(): Router {
       return true;
     },
     home() {
-      if (stack.peek().length > 1) setStack(['home']);
+      if (stack.peek().length > 1) setStack(["home"]);
     },
     isOpen: (route) => stack.peek().includes(route),
   };

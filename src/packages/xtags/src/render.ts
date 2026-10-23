@@ -1,5 +1,5 @@
-import { clearRange, collectNodes, type Child } from './dom';
-import { createRoot, onCleanup, untrack } from './reactive';
+import { clearRange, collectNodes, type Child } from "./dom";
+import { createRoot, onCleanup, untrack } from "./reactive";
 
 /**
  * Mounts `app()`'s result into `container` and returns `unmount()`.
@@ -24,19 +24,19 @@ import { createRoot, onCleanup, untrack } from './reactive';
  * ```
  */
 export function render(app: () => Child, container: Element): () => void {
-	return createRoot((dispose) => {
-		const start = document.createComment('');
-		const end = document.createComment('');
-		const fragment = document.createDocumentFragment();
-		fragment.append(start, ...collectNodes(untrack(app)), end);
-		container.append(fragment);
+  return createRoot((dispose) => {
+    const start = document.createComment("");
+    const end = document.createComment("");
+    const fragment = document.createDocumentFragment();
+    fragment.append(start, ...collectNodes(untrack(app)), end);
+    container.append(fragment);
 
-		onCleanup(() => {
-			clearRange(start, end);
-			start.parentNode?.removeChild(start);
-			end.parentNode?.removeChild(end);
-		});
+    onCleanup(() => {
+      clearRange(start, end);
+      start.parentNode?.removeChild(start);
+      end.parentNode?.removeChild(end);
+    });
 
-		return dispose;
-	});
+    return dispose;
+  });
 }

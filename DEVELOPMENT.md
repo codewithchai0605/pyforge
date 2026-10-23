@@ -15,7 +15,7 @@ session stopped. Update the **Status** section whenever you finish something.
   delete / new-from-template), find-in-files, console (ANSI, `\r`), display (turtle/plots),
   packages page, settings page, dialogs, toasts.
 - **Navigation stack** (`src/navigation.ts`): Home → Packages → Settings, Back returns to the page
-  you came from; Settings is reachable from Home *and* from Packages.
+  you came from; Settings is reachable from Home _and_ from Packages.
 - **Back chain** (`src/components/backStack.ts`): dialog / sheet / drawer / page share one ordered
   stack (Back closes whichever layer opened last); on Home it runs the exit flow: confirmation, or
   Save / Discard / Stay when files are unsaved; a running program is stopped before exit.
@@ -26,6 +26,37 @@ session stopped. Update the **Status** section whenever you finish something.
   inset cordova-android 15 already applies to the WebView. Now measured natively
   (`PyRuntimePlugin.measureInsets`) and applied as `--inset-*` CSS variables (0 when the WebView is
   already inset).
+
+- **Quick-tools bar: SHFT/CTRL/ALT now apply to typed keys** (`src/editor/modifiers.ts`). Before,
+  they only changed the bar's own arrow buttons, so CTRL then `a` on the phone keyboard just typed
+  `a`. Tap = next key only, double-tap = locked (underlined), cleared when the editor loses focus.
+  Also fixed in the bar: the toggles never released after use (now one-shot), symbols bypassed
+  `closeBrackets` (`(` then `)` gave `())`; they are typed through the editor's input handlers now),
+  and `=`, `-`, `/`, `%`, `+`, `<`, `>` were inserted with padding spaces (`==` became `=  =`; now
+  plain characters). New bar buttons: Select all, Paste.
+- **Selection menu** (`src/components/selectionMenu.tsx`): the app's own floating bar over a
+  selection (icons: Cut, Copy, Paste, Select all, Comment) and over a long-pressed caret (Paste,
+  Select all). `selectionMenu.add({...})` returns a remover, `.remove(id)` removes by id; the
+  built-ins are registered through the same API. Reachable from DevTools as
+  `pyforge.selectionMenu`; modifier state as `pyforge.keyModifiers`.
+
+**Written but NOT verified on a device** (compiled against stubs, never run; this is the first thing
+to test after the next APK build):
+
+- `PyForgeWebView.kt`: a `SystemWebView` subclass, installed by the `webview` preference, that hides
+  Android's floating selection bar while the editor has focus (empties the ActionMode's menu and
+  parks its anchor off-screen; the ActionMode itself must still be created or Chromium drops the
+  selection). Toggled from JS through `PyRuntimePlugin` action `selectionBar`. Expected: no system
+  bar, selection handles still there. Worst case: both bars. Real risk: if Cordova cannot
+  instantiate the class the app crashes on start with `Failed to create webview`.
+- `PyRuntimePlugin` actions `clipboardRead` / `clipboardWrite`: the page cannot use
+  `navigator.clipboard.readText()` inside an Android WebView, so Paste goes native.
+- Sticky CTRL + a letter on **Gboard**. Verified: `keydown`, a cancelable `beforeinput`, and the
+  composing case where the character is already in the DOM (CodeMirror's own observer, in jsdom and
+  with a genuine `execCommand('insertText')` in WebKit). Not verified: Gboard's actual composition
+  behaviour. If CTRL+A still types an `a` on a phone, that is where to look (`keyModifierInput`).
+- Long-press on a bare caret firing `contextmenu` in the Android WebView (the caret menu relies on it;
+  Select all and Paste are also on the quick bar as a fallback).
 
 **Confirmed on a real phone by the user** (screenshots): app runs, Python 3.13.16 on arm64_v8a,
 editor/console/packages page render, a package install reaches PyPI. Everything marked
@@ -63,7 +94,7 @@ export PATH=/tmp/venv/bin:$PATH            # so `npm run test:python` finds pyte
 #   https://github.com/oven-sh/bun/releases  ->  bun-linux-x64.zip
 
 npm run build          # typecheck + bundle (tsx runs the scripts; Bun not needed)
-npm test               # 53 TS + 37 app + 56 Python tests
+npm test               # 117 TS + 37 app + 56 Python tests
 npm run smoke-test     # drives the BUILT UI in jsdom against real Python
 utils/dev-tools/check-kotlin.sh     # Kotlin compile check (see below)
 ```
@@ -96,7 +127,7 @@ utils/dev-tools/snap.sh steps.json        # writes the PNGs named in steps.json;
 ```
 
 `steps.json` is a list of `{"js": "...", "eval": "...", "wait": ms, "shot": "out.png"}`. Caveats learned
-the hard way: `eval` runs *before* `js` inside one step; the first step needs `"wait": 6000` for the
+the hard way: `eval` runs _before_ `js` inside one step; the first step needs `"wait": 6000` for the
 app to start; `pkill -f` in a command kills your own shell (match by PID instead); the server must be
 started in the same command as the screenshot in a sandbox where background jobs don't survive.
 
@@ -118,11 +149,30 @@ started in the same command as the screenshot in a sandbox where background jobs
 - **Race on Stop**: a Stop sent before the run id / Python start is known must still cancel the run
   (dev runtime queues it; Kotlin registers the run synchronously before the slow work).
 - **Back order**: pages must be on the same Back stack as sheets/dialogs, or Back closes a sheet that
-  is *under* the page (found by the smoke test).
+  is _under_ the page (found by the smoke test).
 - **Insets**: never combine a host-inset WebView with `env(safe-area-inset-*)`.
 - tsx runs CommonJS by default: test files with top-level `await` need `.mts` (smoke test) or Bun.
-- `window.pyforge` (editorManager, runPanel, workspace, runtime, router) exists for DevTools and the
-  smoke test.
+- `window.pyforge` (editorManager, runPanel, workspace, runtime, router, selectionMenu, keyModifiers)
+  exists for DevTools and the smoke test.
+- **Modifier keys are registered on three input paths** (`keyModifierInput`): `keydown`, a cancelable
+  `beforeinput`, and CodeMirror's `inputHandler` (for keyboards that compose: the letter is already
+  in the DOM, CodeMirror redraws it away when the handler consumes it). All three re-dispatch a real
+  bubbling `keydown`, so editor keymaps _and_ document-level shortcuts (Ctrl+S, Ctrl+Enter) see it.
+  Letters go out **lower-case** with the shift flag: CodeMirror matches `Mod-Shift-z` against `z`,
+  not `Z`. Ctrl+C/X/V can't come from a synthetic event, so they are mapped to the clipboard module.
+- **Type symbols through `typeText`** (it calls the `inputHandler` facet like real typing does);
+  `view.dispatch({changes})` skips `closeBrackets`.
+- **Editor extensions go in `baseExtensions`** (`createEditor.ts`): every tab has its own EditorState.
+- **`view.hasFocus` needs the whole window focused**; the menu tests `view.root.activeElement` instead.
+  **`view.visibleRanges` is what CodeMirror _rendered_, not what is on screen**: use `coordsAtPos`
+  against the scroller's rect (an early version kept the menu open after scrolling away).
+- The editor does **not** enable multiple selections, so there is no Ctrl+D "select next match".
+- jsdom collapses the selection after `view.focus()` following a Select all; the real engine does not.
+  Test the real thing in WebKitGTK when a behaviour depends on the live Selection.
+- `@codemirror/search` is imported directly but is not in package.json (it arrives through
+  `codemirror`). Add it before upgrading that package.
+- `cordova.exec`'d `PyRuntime` is also where native clipboard / selection-bar calls live
+  (`src/native/device.ts`); every call has a browser fallback so the desktop preview keeps working.
 
 ## Terminal: research notes (NOT implemented)
 
@@ -133,7 +183,7 @@ Feasibility was researched and the facts below were verified; no code was writte
   `lib<name>.so` in `jniLibs/<abi>/`, set `extractNativeLibs="true"` /
   `packaging.jniLibs.useLegacyPackaging = true`, and exec them from `applicationInfo.nativeLibraryDir`.
 - **proot for Android**: `github.com/green-green-avk/build-proot-android`, `packages/proot-android-
-  {aarch64,x86_64}.tar.gz` (git clone works; the API is rate-limited). Contains `root/bin/proot` and
+{aarch64,x86_64}.tar.gz` (git clone works; the API is rate-limited). Contains `root/bin/proot` and
   `root/libexec/proot/loader` (bionic, talloc static; set `PROOT_LOADER`). PRoot is GPL-2.0: ship its
   source/offer. Upstream `proot-me/proot` releases are x86_64 only.
 - **Rootfs** (pinned by the official proot-distro v4.38.0 catalog; mirrors not reachable from the
@@ -145,10 +195,10 @@ Feasibility was researched and the facts below were verified; no code was writte
   - Ubuntu 25.10 aarch64 `.../ubuntu-questing-aarch64-pd-v4.37.0.tar.xz`
     sha256 `37e61ce5fd8593a7d10c4e72ebe611adb7e795f7492e4c0bf3a950441c984161`
   - Ubuntu 25.10 x86_64 sha256 `0fe0add7dff6adeaa58d5a6f44225cedf1924bd6c221c886077fa3b595319c2d`
-  (proot-distro 5.x switched to OCI registry images; 4.x tarballs are the simpler route.)
+    (proot-distro 5.x switched to OCI registry images; 4.x tarballs are the simpler route.)
 - **Launch command** (from proot-distro 4.38 `proot-distro.sh`): `proot -L --kernel-release=6.17.0-PRoot-
-  Distro --link2symlink --kill-on-exit --rootfs=<dir> --root-id --cwd=/root --bind=/dev --bind=/proc
-  --bind=/sys` + fake `/proc/{loadavg,stat,uptime,version}` files (Android blocks the real ones) +
+Distro --link2symlink --kill-on-exit --rootfs=<dir> --root-id --cwd=/root --bind=/dev --bind=/proc
+--bind=/sys` + fake `/proc/{loadavg,stat,uptime,version}` files (Android blocks the real ones) +
   `/usr/bin/env -i HOME=/root LANG=C.UTF-8 PATH=... TERM=xterm-256color TMPDIR=/tmp /bin/bash --login`.
   Extra: env `PROOT_NO_SECCOMP=1`, `PROOT_TMP_DIR`, bind the PyForge workspace to `/root/projects`.
 - **Extraction** in Kotlin (commons-compress + `org.tukaani:xz`): turn hard links into copies, symlinks
@@ -168,15 +218,16 @@ Feasibility was researched and the facts below were verified; no code was writte
 
 ## What was actually run (so claims are checkable)
 
-| Check | Result |
-|---|---|
-| `pytest tests/python` | 56 passed |
-| `tsx --test tests/ts` | 53 passed (incl. TS ⇄ bridge ⇄ Python e2e and cancel e2e) |
-| `bun test src/fileSystem/test src/editorManager/test` | 37 passed |
-| `npm run smoke-test` | 12 steps passed (UI in jsdom + real Python) |
-| `utils/dev-tools/check-kotlin.sh` | compiles against stubs |
-| real Cordova CLI, platform android@15 + plugins | project generated correctly |
-| WebKitGTK screenshots at 412x860 | editor, console, turtle, plot, drawer, menu, packages, settings, dialogs |
+| Check                                                 | Result                                                                                                                                             |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pytest tests/python`                                 | 56 passed                                                                                                                                          |
+| `tsx --test tests/ts`                                 | 117 passed (53 original + 32 `editorInput` + 32 `selectionMenu`; incl. TS ⇄ bridge ⇄ Python e2e and cancel e2e)                                    |
+| `bun test src/fileSystem/test src/editorManager/test` | 37 passed                                                                                                                                          |
+| `npm run smoke-test`                                  | 15 steps passed (UI in jsdom + real Python; 3 new: CTRL+`a`, `(` `)`, selection menu + `add`/`remove`)                                             |
+| `utils/dev-tools/check-kotlin.sh`                     | compiles against stubs (15 classes; also confirmed it _fails_ on a broken `startActionMode` override)                                              |
+| real Cordova CLI, platform android@15 + plugins       | project generated correctly; the `webview` preference appears once in `res/xml/config.xml` and `PyForgeWebView.kt` lands in `app/src/main/kotlin/` |
+| WebKitGTK screenshots at 412x860                      | editor, console, turtle, plot, drawer, menu, packages, settings, dialogs, selection menu (above / below / caret), armed and locked modifier keys   |
+| WebKitGTK behaviour checks                            | CTRL + `execCommand('insertText','a')` selects all (85/85 chars), doc unchanged; Select all via the menu; menu closes on scroll-away               |
 
 Never run: the Gradle build, the app on an emulator, anything in the "Not verified" list in README.md
 other than what the user's own screenshots showed.

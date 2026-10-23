@@ -1,23 +1,30 @@
-import { computed, effect, isSignal, onCleanup, untrack, type Signal } from './reactive';
+import {
+  computed,
+  effect,
+  isSignal,
+  onCleanup,
+  untrack,
+  type Signal,
+} from "./reactive";
 
 /** A zero-argument function read to get the current value (a `Signal` is one). */
 export type Accessor<T> = () => T;
 
 export type Child =
-	| Node
-	| string
-	| number
-	| boolean
-	| null
-	| undefined
-	| Signal<unknown>
-	/** A reactive child: re-evaluated whenever a signal it read changes. May return any `Child`. */
-	| (() => Child)
-	| Child[];
+  | Node
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | Signal<unknown>
+  /** A reactive child: re-evaluated whenever a signal it read changes. May return any `Child`. */
+  | (() => Child)
+  | Child[];
 
 /** A function that is a plain thunk (not a `Signal`, which is also callable). */
 function isThunk(value: unknown): value is () => Child {
-	return typeof value === 'function' && !isSignal(value);
+  return typeof value === "function" && !isSignal(value);
 }
 
 /**
@@ -28,11 +35,13 @@ function isThunk(value: unknown): value is () => Child {
  * so through bindings (`() => …`, `effect`, `watch`).
  */
 export function callComponent<P>(type: (props: P) => Node, props: P): Node {
-	return untrack(() => type(props));
+  return untrack(() => type(props));
 }
 
 export type ComponentProps = Record<string, unknown> & { children?: Child };
-export type Component<P extends ComponentProps = ComponentProps> = (props: P) => Node;
+export type Component<P extends ComponentProps = ComponentProps> = (
+  props: P,
+) => Node;
 
 /**
  * Hyperscript factory: `h(type, props, ...children)`.
@@ -73,50 +82,54 @@ export type Component<P extends ComponentProps = ComponentProps> = (props: P) =>
  * component that has its own type parameter.
  */
 export function h<F extends (props: never) => Node>(
-	type: F,
-	props: Parameters<F>[0] | null,
-	...children: Child[]
+  type: F,
+  props: Parameters<F>[0] | null,
+  ...children: Child[]
 ): Node;
-export function h(type: string, props: Record<string, unknown> | null, ...children: Child[]): Node;
 export function h(
-	type: string | Component<never>,
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- implementation
-	// signature only; must be broad enough to cover both overloads above (the
-	// first overload's props type varies per-component via `Parameters<F>[0]`,
-	// which isn't always a `Record<string, unknown>`, e.g. ForProps<T>).
-	props: any,
-	...children: Child[]
+  type: string,
+  props: Record<string, unknown> | null,
+  ...children: Child[]
+): Node;
+export function h(
+  type: string | Component<never>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- implementation
+  // signature only; must be broad enough to cover both overloads above (the
+  // first overload's props type varies per-component via `Parameters<F>[0]`,
+  // which isn't always a `Record<string, unknown>`, e.g. ForProps<T>).
+  props: any,
+  ...children: Child[]
 ): Node {
-	const resolvedProps = (props ?? {}) as Record<string, unknown>;
+  const resolvedProps = (props ?? {}) as Record<string, unknown>;
 
-	if (typeof type === 'function') {
-		const componentProps: Record<string, unknown> = { ...resolvedProps };
-		// Only normalize `children` from h()'s trailing args when some were
-		// actually passed (the JSX call shape) — an explicit `children` prop
-		// given via the props object (the programmatic call shape, e.g.
-		// `h(Show, { children: ... })`) must not be clobbered by an empty rest
-		// array turning into `undefined`.
-		if (children.length > 0) {
-			componentProps.children = children.length === 1 ? children[0] : children;
-		}
-		return callComponent(type as (props: unknown) => Node, componentProps);
-	}
+  if (typeof type === "function") {
+    const componentProps: Record<string, unknown> = { ...resolvedProps };
+    // Only normalize `children` from h()'s trailing args when some were
+    // actually passed (the JSX call shape) — an explicit `children` prop
+    // given via the props object (the programmatic call shape, e.g.
+    // `h(Show, { children: ... })`) must not be clobbered by an empty rest
+    // array turning into `undefined`.
+    if (children.length > 0) {
+      componentProps.children = children.length === 1 ? children[0] : children;
+    }
+    return callComponent(type as (props: unknown) => Node, componentProps);
+  }
 
-	const el = createElement(type);
-	// Attributes first, then children, then live properties (`value`, `checked`,
-	// `model`, `ref`): `<select value="b">` can only select an <option> that
-	// already exists, and `ref` callbacks should see a fully built element.
-	applyProps(el, resolvedProps, false);
-	appendChildren(el, children);
-	applyProps(el, resolvedProps, true);
-	return el;
+  const el = createElement(type);
+  // Attributes first, then children, then live properties (`value`, `checked`,
+  // `model`, `ref`): `<select value="b">` can only select an <option> that
+  // already exists, and `ref` callbacks should see a fully built element.
+  applyProps(el, resolvedProps, false);
+  appendChildren(el, children);
+  applyProps(el, resolvedProps, true);
+  return el;
 }
 
 /** Target of JSX fragment syntax (`<>...</>`) — see esbuild.config.mjs's jsxFragment. */
 export function Fragment(props: { children?: Child }): Node {
-	const frag = document.createDocumentFragment();
-	appendChildren(frag, ([] as Child[]).concat(props.children ?? []));
-	return frag;
+  const frag = document.createDocumentFragment();
+  appendChildren(frag, ([] as Child[]).concat(props.children ?? []));
+  return frag;
 }
 
 /**
@@ -130,37 +143,42 @@ export function Fragment(props: { children?: Child }): Node {
  * `computed()` first just to satisfy the type (the implementation only
  * ever *calls* it, same as a Signal).
  */
-export function Show(props: { when: () => unknown; children: Child; fallback?: Child }): Node {
-	// Lazy mode: `children` / `fallback` given as a function (`() => <Heavy/>`)
-	// are *built when needed and disposed when hidden* — the behaviour you want
-	// for pages/panels that own sockets, timers or workers. The eager mode below
-	// (nodes passed directly) builds everything up front and merely toggles it.
-	if (isThunk(props.children) || isThunk(props.fallback)) {
-		const frag = document.createDocumentFragment();
-		// `computed` dedupes: truthy -> truthy does not rebuild the branch.
-		const on = computed(() => Boolean(props.when()));
-		mountDynamic(frag, () =>
-			on() ? resolveBranch(props.children) : resolveBranch(props.fallback)
-		);
-		return frag;
-	}
+export function Show(props: {
+  when: () => unknown;
+  children: Child;
+  fallback?: Child;
+}): Node {
+  // Lazy mode: `children` / `fallback` given as a function (`() => <Heavy/>`)
+  // are *built when needed and disposed when hidden* — the behaviour you want
+  // for pages/panels that own sockets, timers or workers. The eager mode below
+  // (nodes passed directly) builds everything up front and merely toggles it.
+  if (isThunk(props.children) || isThunk(props.fallback)) {
+    const frag = document.createDocumentFragment();
+    // `computed` dedupes: truthy -> truthy does not rebuild the branch.
+    const on = computed(() => Boolean(props.when()));
+    mountDynamic(frag, () =>
+      on() ? resolveBranch(props.children) : resolveBranch(props.fallback),
+    );
+    return frag;
+  }
 
-	const anchor = document.createElement('span');
-	anchor.style.display = 'contents';
+  const anchor = document.createElement("span");
+  anchor.style.display = "contents";
 
-	const whenNodes = collectNodes(props.children);
-	const fallbackNodes = props.fallback !== undefined ? collectNodes(props.fallback) : [];
+  const whenNodes = collectNodes(props.children);
+  const fallbackNodes =
+    props.fallback !== undefined ? collectNodes(props.fallback) : [];
 
-	effect(() => {
-		anchor.replaceChildren(...(props.when() ? whenNodes : fallbackNodes));
-	});
+  effect(() => {
+    anchor.replaceChildren(...(props.when() ? whenNodes : fallbackNodes));
+  });
 
-	return anchor;
+  return anchor;
 }
 
 /** Evaluates a lazy branch once, untracked; eager branches pass straight through. */
 function resolveBranch(branch: Child): Child {
-	return isThunk(branch) ? untrack(branch) : branch;
+  return isThunk(branch) ? untrack(branch) : branch;
 }
 
 /**
@@ -173,15 +191,15 @@ function resolveBranch(branch: Child): Child {
  * like any other child in the tree it's logically part of.
  */
 export function Portal(props: { mount?: Element; children: Child }): Node {
-	const target = props.mount ?? document.body;
-	const nodes = collectNodes(props.children);
-	for (const node of nodes) target.appendChild(node);
+  const target = props.mount ?? document.body;
+  const nodes = collectNodes(props.children);
+  for (const node of nodes) target.appendChild(node);
 
-	onCleanup(() => {
-		for (const node of nodes) node.parentNode?.removeChild(node);
-	});
+  onCleanup(() => {
+    for (const node of nodes) node.parentNode?.removeChild(node);
+  });
 
-	return document.createComment('xtags-portal');
+  return document.createComment("xtags-portal");
 }
 
 /**
@@ -198,56 +216,59 @@ export function Portal(props: { mount?: Element; children: Child }): Node {
  * ```
  */
 export function Switch(props: { children: Child; fallback?: Child }): Node {
-	// Each <Match> child was built via h(Match, {...}), and Match() (below)
-	// just hands its own props straight back instead of building any DOM —
-	// so what actually arrives here as `children` is an array of MatchProps
-	// objects wearing a `Node` type for h()'s sake, not real nodes. Same
-	// trick solid-js's Switch/Match uses, and for the same reason: it lets
-	// <Match> sit in Switch's ordinary JSX children slot without every
-	// branch's DOM getting eagerly built (by `h()` evaluating JSX children
-	// before the parent component runs) only to have all but one thrown away.
-	const branches = ([] as Child[])
-		.concat(props.children ?? [])
-		.filter((c) => c !== null && typeof c === 'object' && 'when' in (c as object))
-		.map((c) => c as unknown as MatchProps);
+  // Each <Match> child was built via h(Match, {...}), and Match() (below)
+  // just hands its own props straight back instead of building any DOM —
+  // so what actually arrives here as `children` is an array of MatchProps
+  // objects wearing a `Node` type for h()'s sake, not real nodes. Same
+  // trick solid-js's Switch/Match uses, and for the same reason: it lets
+  // <Match> sit in Switch's ordinary JSX children slot without every
+  // branch's DOM getting eagerly built (by `h()` evaluating JSX children
+  // before the parent component runs) only to have all but one thrown away.
+  const branches = ([] as Child[])
+    .concat(props.children ?? [])
+    .filter(
+      (c) => c !== null && typeof c === "object" && "when" in (c as object),
+    )
+    .map((c) => c as unknown as MatchProps);
 
-	// Lazy mode: any thunk branch (`<Match when=…>{() => <Page/>}</Match>`) or
-	// thunk fallback means "build only the selected branch, dispose the rest".
-	if (branches.some((b) => isThunk(b.children)) || isThunk(props.fallback)) {
-		const frag = document.createDocumentFragment();
-		const prebuilt = branches.map((b) =>
-			isThunk(b.children) ? null : collectNodes(b.children)
-		);
-		const active = computed(() => branches.findIndex((b) => b.when()));
-		mountDynamic(frag, () => {
-			const i = active();
-			const branch = branches[i];
-			if (branch) return prebuilt[i] ?? resolveBranch(branch.children);
-			return resolveBranch(props.fallback);
-		});
-		return frag;
-	}
+  // Lazy mode: any thunk branch (`<Match when=…>{() => <Page/>}</Match>`) or
+  // thunk fallback means "build only the selected branch, dispose the rest".
+  if (branches.some((b) => isThunk(b.children)) || isThunk(props.fallback)) {
+    const frag = document.createDocumentFragment();
+    const prebuilt = branches.map((b) =>
+      isThunk(b.children) ? null : collectNodes(b.children),
+    );
+    const active = computed(() => branches.findIndex((b) => b.when()));
+    mountDynamic(frag, () => {
+      const i = active();
+      const branch = branches[i];
+      if (branch) return prebuilt[i] ?? resolveBranch(branch.children);
+      return resolveBranch(props.fallback);
+    });
+    return frag;
+  }
 
-	const anchor = document.createElement('span');
-	anchor.style.display = 'contents';
+  const anchor = document.createElement("span");
+  anchor.style.display = "contents";
 
-	const built = branches.map((branch) => ({
-		when: branch.when,
-		nodes: collectNodes(branch.children),
-	}));
-	const fallbackNodes = props.fallback !== undefined ? collectNodes(props.fallback) : [];
+  const built = branches.map((branch) => ({
+    when: branch.when,
+    nodes: collectNodes(branch.children),
+  }));
+  const fallbackNodes =
+    props.fallback !== undefined ? collectNodes(props.fallback) : [];
 
-	effect(() => {
-		const active = built.find((branch) => branch.when());
-		anchor.replaceChildren(...(active ? active.nodes : fallbackNodes));
-	});
+  effect(() => {
+    const active = built.find((branch) => branch.when());
+    anchor.replaceChildren(...(active ? active.nodes : fallbackNodes));
+  });
 
-	return anchor;
+  return anchor;
 }
 
 interface MatchProps {
-	when: () => unknown;
-	children: Child;
+  when: () => unknown;
+  children: Child;
 }
 
 /**
@@ -257,12 +278,12 @@ interface MatchProps {
  * in `Switch` above for why that's what makes the pairing work).
  */
 export function Match(props: MatchProps): Node {
-	return props as unknown as Node;
+  return props as unknown as Node;
 }
 
 interface ContextEntry {
-	ctx: object;
-	value: unknown;
+  ctx: object;
+  value: unknown;
 }
 
 // A flat stack rather than a per-node tree: `Provider` pushes before
@@ -274,17 +295,17 @@ interface ContextEntry {
 const contextStack: ContextEntry[] = [];
 
 export interface Context<T> {
-	readonly defaultValue: T;
-	/**
-	 * `children` must be a *function* (`() => <Child/>`), not a `<Child/>`
-	 * passed directly. `h()` evaluates JSX children before calling the
-	 * component they're passed to — by the time `Provider` runs, a directly-
-	 * nested `<Consumer/>` would already have finished running and already
-	 * called `useContext()` too early to see `value`. Wrapping it in a
-	 * function defers that call until `Provider` is the one invoking it,
-	 * which is after the value has been pushed onto the context stack.
-	 */
-	Provider: (props: { value: T; children: () => Child }) => Node;
+  readonly defaultValue: T;
+  /**
+   * `children` must be a *function* (`() => <Child/>`), not a `<Child/>`
+   * passed directly. `h()` evaluates JSX children before calling the
+   * component they're passed to — by the time `Provider` runs, a directly-
+   * nested `<Consumer/>` would already have finished running and already
+   * called `useContext()` too early to see `value`. Wrapping it in a
+   * function defers that call until `Provider` is the one invoking it,
+   * which is after the value has been pushed onto the context stack.
+   */
+  Provider: (props: { value: T; children: () => Child }) => Node;
 }
 
 /**
@@ -315,28 +336,28 @@ export interface Context<T> {
  * that determines whether descendants react to later changes.
  */
 export function createContext<T>(defaultValue: T): Context<T> {
-	const ctx: Context<T> = {
-		defaultValue,
-		Provider(props) {
-			if (typeof props.children !== 'function') {
-				throw new TypeError(
-					"Context.Provider's children must be a function — " +
-						'`<ctx.Provider value={v}>{() => <Child/>}</ctx.Provider>`, not ' +
-						'`<ctx.Provider value={v}><Child/></ctx.Provider>`. h() evaluates JSX ' +
-						'children before calling Provider, so a directly-nested <Child/> would ' +
-						'already have run (and already called useContext too early) by the time ' +
-						'Provider gets a chance to make this value visible to it.'
-				);
-			}
-			contextStack.push({ ctx, value: props.value });
-			try {
-				return Fragment({ children: props.children() });
-			} finally {
-				contextStack.pop();
-			}
-		},
-	};
-	return ctx;
+  const ctx: Context<T> = {
+    defaultValue,
+    Provider(props) {
+      if (typeof props.children !== "function") {
+        throw new TypeError(
+          "Context.Provider's children must be a function — " +
+            "`<ctx.Provider value={v}>{() => <Child/>}</ctx.Provider>`, not " +
+            "`<ctx.Provider value={v}><Child/></ctx.Provider>`. h() evaluates JSX " +
+            "children before calling Provider, so a directly-nested <Child/> would " +
+            "already have run (and already called useContext too early) by the time " +
+            "Provider gets a chance to make this value visible to it.",
+        );
+      }
+      contextStack.push({ ctx, value: props.value });
+      try {
+        return Fragment({ children: props.children() });
+      } finally {
+        contextStack.pop();
+      }
+    },
+  };
+  return ctx;
 }
 
 /**
@@ -347,14 +368,14 @@ export function createContext<T>(defaultValue: T): Context<T> {
  * not inside a later callback) — same as reading any other prop.
  */
 export function useContext<T>(ctx: Context<T>): T {
-	for (let i = contextStack.length - 1; i >= 0; i--) {
-		const frame = contextStack[i];
-		if (frame && frame.ctx === ctx) return frame.value as T;
-	}
-	return ctx.defaultValue;
+  for (let i = contextStack.length - 1; i >= 0; i--) {
+    const frame = contextStack[i];
+    if (frame && frame.ctx === ctx) return frame.value as T;
+  }
+  return ctx.defaultValue;
 }
 
-const SVG_NS = 'http://www.w3.org/2000/svg';
+const SVG_NS = "http://www.w3.org/2000/svg";
 
 // Tags that must be created with `document.createElementNS(SVG_NS, ...)`
 // instead of `document.createElement(...)`. Without this, `h('svg', ...)`
@@ -365,74 +386,74 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 // `<svg>`, e.g. `foreignObject` content) still goes through the normal
 // HTML path, which is correct for HTML embedded via `foreignObject`.
 const SVG_TAGS = new Set([
-	'svg',
-	'a',
-	'circle',
-	'clipPath',
-	'defs',
-	'desc',
-	'ellipse',
-	'feBlend',
-	'feColorMatrix',
-	'feComponentTransfer',
-	'feComposite',
-	'feConvolveMatrix',
-	'feDiffuseLighting',
-	'feDisplacementMap',
-	'feDistantLight',
-	'feDropShadow',
-	'feFlood',
-	'feFuncA',
-	'feFuncB',
-	'feFuncG',
-	'feFuncR',
-	'feGaussianBlur',
-	'feImage',
-	'feMerge',
-	'feMergeNode',
-	'feMorphology',
-	'feOffset',
-	'fePointLight',
-	'feSpecularLighting',
-	'feSpotLight',
-	'feTile',
-	'feTurbulence',
-	'filter',
-	'foreignObject',
-	'g',
-	'image',
-	'line',
-	'linearGradient',
-	'marker',
-	'mask',
-	'metadata',
-	'mpath',
-	'path',
-	'pattern',
-	'polygon',
-	'polyline',
-	'radialGradient',
-	'rect',
-	'stop',
-	'switch',
-	'symbol',
-	'text',
-	'textPath',
-	'title',
-	'tspan',
-	'use',
-	'view',
-	'animate',
-	'animateMotion',
-	'animateTransform',
-	'set',
+  "svg",
+  "a",
+  "circle",
+  "clipPath",
+  "defs",
+  "desc",
+  "ellipse",
+  "feBlend",
+  "feColorMatrix",
+  "feComponentTransfer",
+  "feComposite",
+  "feConvolveMatrix",
+  "feDiffuseLighting",
+  "feDisplacementMap",
+  "feDistantLight",
+  "feDropShadow",
+  "feFlood",
+  "feFuncA",
+  "feFuncB",
+  "feFuncG",
+  "feFuncR",
+  "feGaussianBlur",
+  "feImage",
+  "feMerge",
+  "feMergeNode",
+  "feMorphology",
+  "feOffset",
+  "fePointLight",
+  "feSpecularLighting",
+  "feSpotLight",
+  "feTile",
+  "feTurbulence",
+  "filter",
+  "foreignObject",
+  "g",
+  "image",
+  "line",
+  "linearGradient",
+  "marker",
+  "mask",
+  "metadata",
+  "mpath",
+  "path",
+  "pattern",
+  "polygon",
+  "polyline",
+  "radialGradient",
+  "rect",
+  "stop",
+  "switch",
+  "symbol",
+  "text",
+  "textPath",
+  "title",
+  "tspan",
+  "use",
+  "view",
+  "animate",
+  "animateMotion",
+  "animateTransform",
+  "set",
 ]);
 
 function createElement(tag: string): HTMLElement {
-	const el = SVG_TAGS.has(tag)
-		? document.createElementNS(SVG_NS, tag)
-		: document.createElement(tag);
-	return el as HTMLElement;
+  const el = SVG_TAGS.has(tag)
+    ? document.createElementNS(SVG_NS, tag)
+    : document.createElement(tag);
+  return el as HTMLElement;
 }
 
 /**
@@ -447,20 +468,20 @@ function createElement(tag: string): HTMLElement {
  * input" is meant to work.
  */
 const PROPERTY_PROPS = new Set([
-	'value',
-	'checked',
-	'selected',
-	'indeterminate',
-	'defaultValue',
-	'defaultChecked',
-	'muted',
+  "value",
+  "checked",
+  "selected",
+  "indeterminate",
+  "defaultValue",
+  "defaultChecked",
+  "muted",
 ]);
 
 // A handful of event names people intuitively spell differently than the
 // browser does; `onDoubleClick` silently registering a `doubleclick`
 // listener (which no browser ever fires) is a real, silent footgun.
 const EVENT_NAME_ALIASES: Record<string, string> = {
-	doubleclick: 'dblclick',
+  doubleclick: "dblclick",
 };
 
 /**
@@ -471,66 +492,77 @@ const EVENT_NAME_ALIASES: Record<string, string> = {
  * Any non-event, non-`ref` prop whose value is a function (a `Signal` or a
  * plain `() => …` accessor) is bound reactively.
  */
-function applyProps(el: HTMLElement, props: Record<string, unknown>, late: boolean): void {
-	for (const [key, value] of Object.entries(props)) {
-		if (key === 'children') continue;
+function applyProps(
+  el: HTMLElement,
+  props: Record<string, unknown>,
+  late: boolean,
+): void {
+  for (const [key, value] of Object.entries(props)) {
+    if (key === "children") continue;
 
-		const isLate = key === 'ref' || key === 'model' || (PROPERTY_PROPS.has(key) && key in el);
-		if (isLate !== late) continue;
+    const isLate =
+      key === "ref" ||
+      key === "model" ||
+      (PROPERTY_PROPS.has(key) && key in el);
+    if (isLate !== late) continue;
 
-		if (key === 'ref') {
-			bindRef(el, value);
-			continue;
-		}
+    if (key === "ref") {
+      bindRef(el, value);
+      continue;
+    }
 
-		if (key === 'model' && isSignal(value)) {
-			bindModel(el, value);
-			continue;
-		}
+    if (key === "model" && isSignal(value)) {
+      bindModel(el, value);
+      continue;
+    }
 
-		if (key === 'style') {
-			bindStyle(el, value);
-			continue;
-		}
+    if (key === "style") {
+      bindStyle(el, value);
+      continue;
+    }
 
-		if (key === 'class' || key === 'className') {
-			bindClass(el, value);
-			continue;
-		}
+    if (key === "class" || key === "className") {
+      bindClass(el, value);
+      continue;
+    }
 
-		if (
-			key.startsWith('on') &&
-			key.length > 2 &&
-			(typeof value === 'function' || Array.isArray(value))
-		) {
-			bindEvent(el, key, value as EventListener | [EventListener, AddEventListenerOptions?]);
-			continue;
-		}
+    if (
+      key.startsWith("on") &&
+      key.length > 2 &&
+      (typeof value === "function" || Array.isArray(value))
+    ) {
+      bindEvent(
+        el,
+        key,
+        value as EventListener | [EventListener, AddEventListenerOptions?],
+      );
+      continue;
+    }
 
-		if (PROPERTY_PROPS.has(key) && key in el) {
-			bindProperty(el, key, value);
-			continue;
-		}
+    if (PROPERTY_PROPS.has(key) && key in el) {
+      bindProperty(el, key, value);
+      continue;
+    }
 
-		if (typeof value === 'function') {
-			const accessor = value as () => unknown;
-			effect(() => setAttr(el, key, accessor()));
-			continue;
-		}
+    if (typeof value === "function") {
+      const accessor = value as () => unknown;
+      effect(() => setAttr(el, key, accessor()));
+      continue;
+    }
 
-		setAttr(el, key, value);
-	}
+    setAttr(el, key, value);
+  }
 }
 
 function bindRef(el: HTMLElement, value: unknown): void {
-	if (typeof value === 'function') {
-		(value as (el: HTMLElement) => void)(el);
-	} else if (value && typeof value === 'object') {
-		(value as { current: HTMLElement | null }).current = el;
-		onCleanup(() => {
-			(value as { current: HTMLElement | null }).current = null;
-		});
-	}
+  if (typeof value === "function") {
+    (value as (el: HTMLElement) => void)(el);
+  } else if (value && typeof value === "object") {
+    (value as { current: HTMLElement | null }).current = el;
+    onCleanup(() => {
+      (value as { current: HTMLElement | null }).current = null;
+    });
+  }
 }
 
 /**
@@ -542,42 +574,46 @@ function bindRef(el: HTMLElement, value: unknown): void {
  * `input` listener and expects a string signal.
  */
 function bindModel(el: HTMLElement, sig: Signal<unknown>): void {
-	const isCheckable =
-		el instanceof HTMLInputElement && (el.type === 'checkbox' || el.type === 'radio');
+  const isCheckable =
+    el instanceof HTMLInputElement &&
+    (el.type === "checkbox" || el.type === "radio");
 
-	if (isCheckable) {
-		const input = el as HTMLInputElement;
-		effect(() => {
-			input.checked = Boolean(sig());
-		});
-		const onChange = () => (sig as Signal<boolean>).set(input.checked);
-		input.addEventListener('change', onChange);
-		onCleanup(() => input.removeEventListener('change', onChange));
-	} else {
-		const field = el as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
-		effect(() => {
-			writeProperty(field, 'value', sig());
-		});
-		registerSelectRefresh(field, () => writeProperty(field, 'value', untrack(sig)));
-		const onInput = () => (sig as Signal<string>).set(field.value);
-		field.addEventListener('input', onInput);
-		onCleanup(() => field.removeEventListener('input', onInput));
-	}
+  if (isCheckable) {
+    const input = el as HTMLInputElement;
+    effect(() => {
+      input.checked = Boolean(sig());
+    });
+    const onChange = () => (sig as Signal<boolean>).set(input.checked);
+    input.addEventListener("change", onChange);
+    onCleanup(() => input.removeEventListener("change", onChange));
+  } else {
+    const field = el as
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+    effect(() => {
+      writeProperty(field, "value", sig());
+    });
+    registerSelectRefresh(field, () =>
+      writeProperty(field, "value", untrack(sig)),
+    );
+    const onInput = () => (sig as Signal<string>).set(field.value);
+    field.addEventListener("input", onInput);
+    onCleanup(() => field.removeEventListener("input", onInput));
+  }
 }
 
 function bindEvent(
-	el: HTMLElement,
-	key: string,
-	value: EventListener | [EventListener, AddEventListenerOptions?]
+  el: HTMLElement,
+  key: string,
+  value: EventListener | [EventListener, AddEventListenerOptions?],
 ): void {
-	const [handler, options] = Array.isArray(value) ? value : [value, undefined];
-	if (typeof handler !== 'function') return;
+  const [handler, options] = Array.isArray(value) ? value : [value, undefined];
+  if (typeof handler !== "function") return;
 
-	const raw = key.slice(2).toLowerCase();
-	const eventName = EVENT_NAME_ALIASES[raw] ?? raw;
+  const raw = key.slice(2).toLowerCase();
+  const eventName = EVENT_NAME_ALIASES[raw] ?? raw;
 
-	el.addEventListener(eventName, handler, options);
-	onCleanup(() => el.removeEventListener(eventName, handler, options));
+  el.addEventListener(eventName, handler, options);
+  onCleanup(() => el.removeEventListener(eventName, handler, options));
 }
 
 /**
@@ -587,25 +623,28 @@ function bindEvent(
  * trip) can reset the caret or break IME composition in some WebViews.
  */
 function writeProperty(el: HTMLElement, key: string, next: unknown): void {
-	const target = el as unknown as Record<string, unknown>;
-	if (key === 'value') {
-		const str = next === null || next === undefined ? '' : String(next);
-		if (target.value !== str) target.value = str;
-	} else if (target[key] !== next) {
-		target[key] = next;
-	}
+  const target = el as unknown as Record<string, unknown>;
+  if (key === "value") {
+    const str = next === null || next === undefined ? "" : String(next);
+    if (target.value !== str) target.value = str;
+  } else if (target[key] !== next) {
+    target[key] = next;
+  }
 }
 
 function bindProperty(el: HTMLElement, key: string, value: unknown): void {
-	if (typeof value === 'function') {
-		const accessor = value as () => unknown;
-		effect(() => writeProperty(el, key, accessor()));
-		if (key === 'value')
-			registerSelectRefresh(el, () => writeProperty(el, key, untrack(accessor)));
-	} else {
-		writeProperty(el, key, value);
-		if (key === 'value') registerSelectRefresh(el, () => writeProperty(el, key, value));
-	}
+  if (typeof value === "function") {
+    const accessor = value as () => unknown;
+    effect(() => writeProperty(el, key, accessor()));
+    if (key === "value")
+      registerSelectRefresh(el, () =>
+        writeProperty(el, key, untrack(accessor)),
+      );
+  } else {
+    writeProperty(el, key, value);
+    if (key === "value")
+      registerSelectRefresh(el, () => writeProperty(el, key, value));
+  }
 }
 
 // --- <select> value re-application -------------------------------------
@@ -618,63 +657,79 @@ function bindProperty(el: HTMLElement, key: string, value: unknown): void {
 const selectRefreshers = new WeakMap<Element, () => void>();
 
 function registerSelectRefresh(el: Element, refresh: () => void): void {
-	if (el.nodeName === 'SELECT') selectRefreshers.set(el, refresh);
+  if (el.nodeName === "SELECT") selectRefreshers.set(el, refresh);
 }
 
 /** Re-applies the bound value of the <select> that `node` is (or sits directly inside, e.g. via <optgroup>). */
 export function refreshSelect(node: Node | null): void {
-	if (!node) return;
-	const select =
-		node.nodeName === 'SELECT' ? node : node.nodeName === 'OPTGROUP' ? node.parentNode : null;
-	if (select) selectRefreshers.get(select as Element)?.();
+  if (!node) return;
+  const select =
+    node.nodeName === "SELECT"
+      ? node
+      : node.nodeName === "OPTGROUP"
+        ? node.parentNode
+        : null;
+  if (select) selectRefreshers.get(select as Element)?.();
 }
 
 // --- style ----------------------------------------------------------------
 
 // Same rule Preact uses: a bare number gets "px" unless the property is
 // unitless (`flex`, `opacity`, `zIndex`, `lineHeight`, `gridColumn`, …).
-const IS_NON_DIMENSIONAL = /acit|ex(?:s|g|n|p|$)|rph|grid|ows|mnc|ntw|ine[ch]|zoo|^ord|itera/i;
+const IS_NON_DIMENSIONAL =
+  /acit|ex(?:s|g|n|p|$)|rph|grid|ows|mnc|ntw|ine[ch]|zoo|^ord|itera/i;
 
 function setStyleProp(el: HTMLElement, prop: string, value: unknown): void {
-	const style = el.style as unknown as Record<string, string> & CSSStyleDeclaration;
-	const custom = prop.includes('-');
-	if (value === null || value === undefined || value === false || value === '') {
-		if (custom) style.removeProperty(prop);
-		else style[prop] = '';
-		return;
-	}
-	const str =
-		typeof value === 'number' && !IS_NON_DIMENSIONAL.test(prop) ? `${value}px` : String(value);
-	// `style[prop] = …` silently ignores CSS custom properties (`--accent`) and
-	// is unreliable for kebab-case names; `setProperty` handles both.
-	if (custom) style.setProperty(prop, str);
-	else style[prop] = str;
+  const style = el.style as unknown as Record<string, string> &
+    CSSStyleDeclaration;
+  const custom = prop.includes("-");
+  if (
+    value === null ||
+    value === undefined ||
+    value === false ||
+    value === ""
+  ) {
+    if (custom) style.removeProperty(prop);
+    else style[prop] = "";
+    return;
+  }
+  const str =
+    typeof value === "number" && !IS_NON_DIMENSIONAL.test(prop)
+      ? `${value}px`
+      : String(value);
+  // `style[prop] = …` silently ignores CSS custom properties (`--accent`) and
+  // is unreliable for kebab-case names; `setProperty` handles both.
+  if (custom) style.setProperty(prop, str);
+  else style[prop] = str;
 }
 
 function applyStyle(
-	el: HTMLElement,
-	style: unknown,
-	previous: Set<string>,
-	perPropReactive: boolean
+  el: HTMLElement,
+  style: unknown,
+  previous: Set<string>,
+  perPropReactive: boolean,
 ): Set<string> {
-	if (typeof style === 'string') {
-		el.style.cssText = style;
-		return new Set();
-	}
-	const next = new Set<string>();
-	if (style && typeof style === 'object') {
-		for (const [prop, raw] of Object.entries(style as Record<string, unknown>)) {
-			next.add(prop);
-			if (perPropReactive && typeof raw === 'function') {
-				const accessor = raw as () => unknown;
-				effect(() => setStyleProp(el, prop, accessor()));
-			} else {
-				setStyleProp(el, prop, raw);
-			}
-		}
-	}
-	for (const prop of previous) if (!next.has(prop)) setStyleProp(el, prop, null);
-	return next;
+  if (typeof style === "string") {
+    el.style.cssText = style;
+    return new Set();
+  }
+  const next = new Set<string>();
+  if (style && typeof style === "object") {
+    for (const [prop, raw] of Object.entries(
+      style as Record<string, unknown>,
+    )) {
+      next.add(prop);
+      if (perPropReactive && typeof raw === "function") {
+        const accessor = raw as () => unknown;
+        effect(() => setStyleProp(el, prop, accessor()));
+      } else {
+        setStyleProp(el, prop, raw);
+      }
+    }
+  }
+  for (const prop of previous)
+    if (!next.has(prop)) setStyleProp(el, prop, null);
+  return next;
 }
 
 /**
@@ -684,76 +739,79 @@ function applyStyle(
  * cleared.
  */
 function bindStyle(el: HTMLElement, value: unknown): void {
-	if (typeof value === 'function') {
-		const accessor = value as () => unknown;
-		let previous = new Set<string>();
-		effect(() => {
-			previous = applyStyle(el, accessor(), previous, false);
-		});
-	} else {
-		applyStyle(el, value, new Set(), true);
-	}
+  if (typeof value === "function") {
+    const accessor = value as () => unknown;
+    let previous = new Set<string>();
+    effect(() => {
+      previous = applyStyle(el, accessor(), previous, false);
+    });
+  } else {
+    applyStyle(el, value, new Set(), true);
+  }
 }
 
 // --- class ------------------------------------------------------------------
 
-type ClassValue = string | Record<string, unknown> | ClassValue[] | null | undefined;
+type ClassValue =
+  string | Record<string, unknown> | ClassValue[] | null | undefined;
 
 function bindClass(el: HTMLElement, value: unknown): void {
-	if (typeof value === 'function') {
-		const accessor = value as () => ClassValue;
-		effect(() => el.setAttribute('class', resolveClass(accessor())));
-	} else {
-		el.setAttribute('class', resolveClass(value as ClassValue));
-	}
+  if (typeof value === "function") {
+    const accessor = value as () => ClassValue;
+    effect(() => el.setAttribute("class", resolveClass(accessor())));
+  } else {
+    el.setAttribute("class", resolveClass(value as ClassValue));
+  }
 }
 
 function resolveClass(value: ClassValue): string {
-	if (!value) return '';
-	if (typeof value === 'string') return value;
-	if (Array.isArray(value)) return value.map(resolveClass).filter(Boolean).join(' ');
-	return Object.entries(value)
-		.filter(([, enabled]) => Boolean(enabled))
-		.map(([name]) => name)
-		.join(' ');
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value))
+    return value.map(resolveClass).filter(Boolean).join(" ");
+  return Object.entries(value)
+    .filter(([, enabled]) => Boolean(enabled))
+    .map(([name]) => name)
+    .join(" ");
 }
 
 function setAttr(el: HTMLElement, key: string, value: unknown): void {
-	if (value === false || value === null || value === undefined) {
-		el.removeAttribute(key);
-	} else if (value === true) {
-		el.setAttribute(key, '');
-	} else {
-		el.setAttribute(key, String(value));
-	}
+  if (value === false || value === null || value === undefined) {
+    el.removeAttribute(key);
+  } else if (value === true) {
+    el.setAttribute(key, "");
+  } else {
+    el.setAttribute(key, String(value));
+  }
 }
 
 // --- children ------------------------------------------------------------------
 
 function appendChildren(parent: Node, children: Child[]): void {
-	for (const child of children) appendChild(parent, child);
+  for (const child of children) appendChild(parent, child);
 }
 
 function appendChild(parent: Node, child: Child): void {
-	if (child === null || child === undefined || typeof child === 'boolean') return;
+  if (child === null || child === undefined || typeof child === "boolean")
+    return;
 
-	if (Array.isArray(child)) {
-		appendChildren(parent, child);
-		return;
-	}
+  if (Array.isArray(child)) {
+    appendChildren(parent, child);
+    return;
+  }
 
-	if (child instanceof Node) {
-		parent.appendChild(child);
-		return;
-	}
+  if (child instanceof Node) {
+    parent.appendChild(child);
+    return;
+  }
 
-	// A Signal or any `() => Child`: a reactive region.
-	if (typeof child === 'function') {
-		mountDynamic(parent, child as () => Child);
-		return;
-	}
+  // A Signal or any `() => Child`: a reactive region.
+  if (typeof child === "function") {
+    mountDynamic(parent, child as () => Child);
+    return;
+  }
 
-	parent.appendChild(document.createTextNode(String(child)));
+  parent.appendChild(document.createTextNode(String(child)));
 }
 
 /**
@@ -766,21 +824,21 @@ function appendChild(parent: Node, child: Child): void {
  * ```
  */
 export function dynamic(accessor: () => Child): Node {
-	const fragment = document.createDocumentFragment();
-	mountDynamic(fragment, accessor);
-	return fragment;
+  const fragment = document.createDocumentFragment();
+  mountDynamic(fragment, accessor);
+  return fragment;
 }
 
 /** Removes every node strictly between two sibling markers. */
 export function clearRange(start: Node, end: Node): void {
-	const parent = start.parentNode;
-	if (!parent) return;
-	let node = start.nextSibling;
-	while (node && node !== end) {
-		const next = node.nextSibling;
-		parent.removeChild(node);
-		node = next;
-	}
+  const parent = start.parentNode;
+  if (!parent) return;
+  let node = start.nextSibling;
+  while (node && node !== end) {
+    const next = node.nextSibling;
+    parent.removeChild(node);
+    node = next;
+  }
 }
 
 /**
@@ -797,47 +855,51 @@ export function clearRange(start: Node, end: Node): void {
  * - Plain text updates in place (same text node) instead of rebuilding.
  */
 function mountDynamic(parent: Node, accessor: () => Child): void {
-	const start = document.createComment('');
-	const end = document.createComment('');
-	parent.appendChild(start);
-	parent.appendChild(end);
-	let text: Text | null = null;
+  const start = document.createComment("");
+  const end = document.createComment("");
+  parent.appendChild(start);
+  parent.appendChild(end);
+  let text: Text | null = null;
 
-	effect(() => {
-		const value = accessor();
-		const container = end.parentNode;
-		if (!container) return; // region was removed from the document wholesale
+  effect(() => {
+    const value = accessor();
+    const container = end.parentNode;
+    if (!container) return; // region was removed from the document wholesale
 
-		if (typeof value === 'string' || typeof value === 'number') {
-			const str = String(value);
-			if (text && start.nextSibling === text && text.nextSibling === end) {
-				if (text.data !== str) text.data = str;
-				return;
-			}
-			clearRange(start, end);
-			text = document.createTextNode(str);
-			container.insertBefore(text, end);
-			refreshSelect(container);
-			return;
-		}
+    if (typeof value === "string" || typeof value === "number") {
+      const str = String(value);
+      if (text && start.nextSibling === text && text.nextSibling === end) {
+        if (text.data !== str) text.data = str;
+        return;
+      }
+      clearRange(start, end);
+      text = document.createTextNode(str);
+      container.insertBefore(text, end);
+      refreshSelect(container);
+      return;
+    }
 
-		text = null;
+    text = null;
 
-		// Returning the very node that is already in place is a no-op (keeps focus/scroll).
-		if (value instanceof Node && start.nextSibling === value && value.nextSibling === end)
-			return;
+    // Returning the very node that is already in place is a no-op (keeps focus/scroll).
+    if (
+      value instanceof Node &&
+      start.nextSibling === value &&
+      value.nextSibling === end
+    )
+      return;
 
-		const fragment = document.createDocumentFragment();
-		appendChild(fragment, value);
-		clearRange(start, end);
-		container.insertBefore(fragment, end);
-		refreshSelect(container);
-	});
+    const fragment = document.createDocumentFragment();
+    appendChild(fragment, value);
+    clearRange(start, end);
+    container.insertBefore(fragment, end);
+    refreshSelect(container);
+  });
 }
 
 /** Turns any `Child` into the flat list of live DOM nodes it renders as. */
 export function collectNodes(child: Child): Node[] {
-	const tmp = document.createDocumentFragment();
-	appendChild(tmp, child);
-	return Array.from(tmp.childNodes);
+  const tmp = document.createDocumentFragment();
+  appendChild(tmp, child);
+  return Array.from(tmp.childNodes);
 }

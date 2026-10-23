@@ -1,6 +1,6 @@
-import path from 'node:path';
-import type { InputOptions, OutputOptions } from 'rolldown';
-import { cssPlugin } from './plugins/css.js';
+import path from "node:path";
+import type { InputOptions, OutputOptions } from "rolldown";
+import { cssPlugin } from "./plugins/css.js";
 
 const ROOT = process.cwd();
 
@@ -13,9 +13,9 @@ export interface BuildFlags {
  * for why this can't just be one multi-entry build. Add another key here
  * (and to ENTRIES) if the app grows further independently-loaded entries.
  */
-export type EntryName = 'main' | 'boot';
+export type EntryName = "main" | "boot";
 
-export const ENTRIES: EntryName[] = ['boot', 'main'];
+export const ENTRIES: EntryName[] = ["boot", "main"];
 
 /**
  * `boot` (src/boot.ts, tiny, loaded directly by the static www/index.html)
@@ -31,22 +31,31 @@ export const ENTRIES: EntryName[] = ['boot', 'main'];
  * directly (INVALID_OPTION error), not assumed — so each entry needs its
  * own single-input build with codeSplitting disabled.
  */
-export function createInputOptions(entry: EntryName, { isProd }: BuildFlags): InputOptions {
+export function createInputOptions(
+  entry: EntryName,
+  { isProd }: BuildFlags,
+): InputOptions {
   return {
     input: path.resolve(ROOT, `src/${entry}.ts`),
     resolve: {
       alias: {
         // Matches tsconfig.json's "paths" — Rolldown doesn't read tsconfig
         // paths automatically, so both have to be kept in sync by hand.
-        '@': path.resolve(ROOT, 'src'),
+        "@": path.resolve(ROOT, "src"),
         // Order matters: the specific JSX-runtime subpaths must win over the bare package alias.
-        'xtags/jsx-runtime': path.resolve(ROOT, 'src/packages/xtags/src/jsx-runtime.ts'),
-        'xtags/jsx-dev-runtime': path.resolve(ROOT, 'src/packages/xtags/src/jsx-dev-runtime.ts'),
-        xtags: path.resolve(ROOT, 'src/packages/xtags/src/index.ts'),
+        "xtags/jsx-runtime": path.resolve(
+          ROOT,
+          "src/packages/xtags/src/jsx-runtime.ts",
+        ),
+        "xtags/jsx-dev-runtime": path.resolve(
+          ROOT,
+          "src/packages/xtags/src/jsx-dev-runtime.ts",
+        ),
+        xtags: path.resolve(ROOT, "src/packages/xtags/src/index.ts"),
       },
     },
     plugins: [cssPlugin({ isProd })],
-    platform: 'browser',
+    platform: "browser",
     moduleTypes: {
       // Rolldown has its own built-in .css handling based on file extension,
       // which runs *before* module-level plugin hooks and — as of the
@@ -56,7 +65,7 @@ export function createInputOptions(entry: EntryName, { isProd }: BuildFlags): In
       // entirely; our own cssPlugin's transform() hook still receives the
       // raw CSS content and runs normally (verified directly against the
       // installed rolldown version, not assumed from docs).
-      '.css': 'empty',
+      ".css": "empty",
       // Forces JSX parsing in plain .js files too, not just .jsx — verified
       // directly (a standalone repro producing correct h(...) calls from a
       // .js file) rather than assumed. This does NOT extend to .ts: oxc's
@@ -69,7 +78,7 @@ export function createInputOptions(entry: EntryName, { isProd }: BuildFlags): In
       // `npm run typecheck` fail with real syntax errors on any .ts file
       // that used it. TS+JSX files should stay .tsx, as everywhere else in
       // this project.
-      '.js': 'jsx',
+      ".js": "jsx",
     },
     // JSX settings come from tsconfig.json. Keeping the factory in one place
     // prevents Rolldown from overriding it and emitting configuration warnings.
@@ -84,9 +93,12 @@ export function createInputOptions(entry: EntryName, { isProd }: BuildFlags): In
  * so there's nothing left to gain from hashing the way a web app deployed
  * behind an HTTP cache would.
  */
-export function createOutputOptions(entry: EntryName, { isProd }: BuildFlags): OutputOptions {
+export function createOutputOptions(
+  entry: EntryName,
+  { isProd }: BuildFlags,
+): OutputOptions {
   return {
-    dir: path.resolve(ROOT, 'www'),
+    dir: path.resolve(ROOT, "www"),
     // iife, not es: boot.js and main.js are loaded as plain classic
     // <script> tags (see www/index.html / boot.ts), not type="module" —
     // real Android WebView Chromium handles ESM scripts fine, but classic
@@ -98,10 +110,10 @@ export function createOutputOptions(entry: EntryName, { isProd }: BuildFlags): O
     // each bundle in its own closure, eliminating that collision — the
     // standard, correct fix for "multiple independent classic scripts on
     // one page", not an ESM-specific workaround.
-    format: 'iife',
+    format: "iife",
     codeSplitting: false,
     entryFileNames: `js/${entry}.js`,
-    assetFileNames: 'css/[name][extname]',
+    assetFileNames: "css/[name][extname]",
     sourcemap: !isProd,
     minify: isProd,
   };

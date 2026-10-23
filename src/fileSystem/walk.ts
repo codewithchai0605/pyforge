@@ -1,4 +1,4 @@
-import { fsOperation, type FileEntry } from './index';
+import { fsOperation, type FileEntry } from "./index";
 
 export interface WalkedFile {
   url: string;
@@ -24,7 +24,14 @@ export interface WalkResult {
  * node_modules/www/platforms among them). Pass `ignoreDirNames: []` to walk
  * everything instead.
  */
-export const DEFAULT_IGNORED_DIR_NAMES = ['.git', 'node_modules', 'target', 'www', 'platforms', 'plugins'];
+export const DEFAULT_IGNORED_DIR_NAMES = [
+  ".git",
+  "node_modules",
+  "target",
+  "www",
+  "platforms",
+  "plugins",
+];
 
 const DEFAULT_MAX_FILES = 500;
 
@@ -74,6 +81,6 @@ export async function walkFiles(
     }
   }
 
-  await walk(rootUrl, '');
+  await walk(rootUrl, "");
   return { files, truncated };
 }

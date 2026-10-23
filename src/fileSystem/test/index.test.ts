@@ -1,5 +1,5 @@
-import { test, before } from 'node:test';
-import assert from 'node:assert/strict';
+import { test, before } from "node:test";
+import assert from "node:assert/strict";
 
 /**
  * Doesn't test either backend's real behavior (internal.test.ts and
@@ -17,9 +17,25 @@ before(() => {
     window: { resolveLocalFileSystemURL: unknown };
   };
   g.cordova = {
-    exec(success: (result: unknown) => void, _error: unknown, service: string, action: string) {
+    exec(
+      success: (result: unknown) => void,
+      _error: unknown,
+      service: string,
+      action: string,
+    ) {
       execCalls.push({ service, action });
-      success(action === 'listDir' ? [] : { name: 'x', isDirectory: false, size: 0, lastModified: 0, mimeType: null, canWrite: true });
+      success(
+        action === "listDir"
+          ? []
+          : {
+              name: "x",
+              isDirectory: false,
+              size: 0,
+              lastModified: 0,
+              mimeType: null,
+              canWrite: true,
+            },
+      );
     },
   };
   g.window = {
@@ -28,38 +44,41 @@ before(() => {
       success({
         isFile: true,
         isDirectory: false,
-        name: 'x',
+        name: "x",
         toURL: () => url,
-        getMetadata: (s: (m: unknown) => void) => s({ size: 0, modificationTime: new Date(0) }),
+        getMetadata: (s: (m: unknown) => void) =>
+          s({ size: 0, modificationTime: new Date(0) }),
       });
     },
   } as unknown as typeof g.window;
 });
 
-const { fsOperation } = await import('../index');
+const { fsOperation } = await import("../index");
 
-test('a content:// url dispatches to the SAF (external) backend', async () => {
+test("a content:// url dispatches to the SAF (external) backend", async () => {
   execCalls = [];
   resolveLocalCalls = [];
 
-  await fsOperation('content://com.android.externalstorage.documents/tree/foo').stat();
+  await fsOperation(
+    "content://com.android.externalstorage.documents/tree/foo",
+  ).stat();
 
   assert.equal(execCalls.length, 1);
-  assert.equal(execCalls[0].service, 'SAF');
+  assert.equal(execCalls[0].service, "SAF");
   assert.equal(resolveLocalCalls.length, 0);
 });
 
-test('a plain path dispatches to the internal (cordova-plugin-file) backend', async () => {
+test("a plain path dispatches to the internal (cordova-plugin-file) backend", async () => {
   execCalls = [];
   resolveLocalCalls = [];
 
-  await fsOperation('file:///storage/emulated/0/Download/notes.txt').stat();
+  await fsOperation("file:///storage/emulated/0/Download/notes.txt").stat();
 
   assert.equal(resolveLocalCalls.length, 1);
   assert.equal(execCalls.length, 0);
 });
 
-test('the returned FsOperation exposes the original url', () => {
-  const url = 'content://com.android.externalstorage.documents/tree/foo';
+test("the returned FsOperation exposes the original url", () => {
+  const url = "content://com.android.externalstorage.documents/tree/foo";
   assert.equal(fsOperation(url).url, url);
 });

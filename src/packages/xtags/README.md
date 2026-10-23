@@ -6,21 +6,29 @@ by hand afterward, a signal passed as a prop or child keeps the relevant
 node/attribute updating itself for as long as it's mounted.
 
 ```ts
-import { h, signal, render } from 'xtags';
+import { h, signal, render } from "xtags";
 
 const count = signal(0);
 
 const App = () =>
-  h('button', { onClick: () => count.update((n) => n + 1) }, 'clicked ', count, ' times');
+  h(
+    "button",
+    { onClick: () => count.update((n) => n + 1) },
+    "clicked ",
+    count,
+    " times",
+  );
 
-render(() => h(App, null), document.getElementById('app')!);
+render(() => h(App, null), document.getElementById("app")!);
 ```
 
 Or the same thing in JSX (see `examples/app` for a full esbuild setup):
 
 ```tsx
 const App = () => (
-  <button onClick={() => count.update((n) => n + 1)}>clicked {count} times</button>
+  <button onClick={() => count.update((n) => n + 1)}>
+    clicked {count} times
+  </button>
 );
 ```
 
@@ -62,17 +70,21 @@ README listed under "not implemented yet":
 
 ```tsx
 <For each={todos} key={(todo) => todo.id}>
-  {(todo, index) => <li>{index}. {todo.text}</li>}
+  {(todo, index) => (
+    <li>
+      {index}. {todo.text}
+    </li>
+  )}
 </For>
 ```
 
 Items are matched by `key` (defaulting to the item itself) across renders,
-so an item that only *moved* gets moved in the DOM, not rebuilt — state,
+so an item that only _moved_ gets moved in the DOM, not rebuilt — state,
 focus, and CSS transitions on an unaffected row survive a list update.
 
 > **Calling `For` directly (no JSX)?** Write `h(For<Item>, {...})`, not
 > `h(For, {...})`. `For` has its own type parameter (`<T>(props:
-> ForProps<T>) => Node`), and JSX's `<For>` only type-checks it correctly
+ForProps<T>) => Node`), and JSX's `<For>` only type-checks it correctly
 > because TypeScript's JSX checker validates a tag against the component's
 > own signature directly, bypassing `h()`'s declared type entirely. A
 > plain `h(For, {...})` call goes through `h()`'s actual overload instead,
@@ -80,7 +92,7 @@ focus, and CSS transitions on an unaffected row survive a list update.
 > through a second, unrelated generic that way — `item`/`index` silently
 > become `unknown` with no error at the `h()` call site itself, only where
 > you go on to use them. Naming the type argument explicitly (a
-> TypeScript 4.7+ *instantiation expression*) sidesteps the inference
+> TypeScript 4.7+ _instantiation expression_) sidesteps the inference
 > gap entirely. This only matters for `For`, or any other component
 > that's itself generic — `h(Show, {...})` etc. need no such workaround.
 
@@ -89,9 +101,15 @@ exclusive branches:
 
 ```tsx
 <Switch fallback={<p>Unknown status</p>}>
-  <Match when={() => status() === 'loading'}><Spinner /></Match>
-  <Match when={() => status() === 'error'}><ErrorBanner /></Match>
-  <Match when={() => status() === 'ready'}><Results /></Match>
+  <Match when={() => status() === "loading"}>
+    <Spinner />
+  </Match>
+  <Match when={() => status() === "error"}>
+    <ErrorBanner />
+  </Match>
+  <Match when={() => status() === "ready"}>
+    <Results />
+  </Match>
 </Switch>
 ```
 
@@ -116,7 +134,7 @@ up when that owner unmounts:
 descendant without threading it through every component's props:
 
 ```tsx
-const ThemeContext = createContext<Signal<'light' | 'dark'>>(theme);
+const ThemeContext = createContext<Signal<"light" | "dark">>(theme);
 
 const App = () => (
   <ThemeContext.Provider value={theme}>
@@ -126,11 +144,11 @@ const App = () => (
 
 const Toolbar = () => {
   const theme = useContext(ThemeContext); // the Signal itself
-  return <div class={theme}>...</div>;    // still reactive from here down
+  return <div class={theme}>...</div>; // still reactive from here down
 };
 ```
 
-`Provider`'s `children` has to be a *function* (`{() => <Toolbar />}`), not
+`Provider`'s `children` has to be a _function_ (`{() => <Toolbar />}`), not
 a `<Toolbar />` passed directly — `h()` evaluates JSX children before
 calling the component they're passed to, so a directly-nested `<Toolbar/>`
 would already have run (and already called `useContext` too early to see
@@ -150,7 +168,7 @@ its own.
 Runs a callback once, deferred to the next microtask — after whatever
 synchronous mounting step (`document.body.append(el)`, `render()`, ...) the
 caller was about to do has actually happened. Useful for anything that
-needs a *live* node, not just a constructed one: focusing an input,
+needs a _live_ node, not just a constructed one: focusing an input,
 measuring layout, handing a `<canvas>` to a third-party library.
 
 ```tsx
@@ -167,7 +185,7 @@ callback is skipped instead of running against an already-torn-down tree.
 ## Forms
 
 Every element's `value`/`checked`/`selected`/`indeterminate` are bound as
-live DOM *properties* when given a signal, not just attributes — so
+live DOM _properties_ when given a signal, not just attributes — so
 `value={someSignal}` keeps a text input "controlled" even after the user
 has typed in it (a plain `setAttribute('value', ...)` stops affecting a
 field's displayed value the moment the user edits it; the property doesn't
@@ -227,7 +245,7 @@ On purpose, for a tiny library:
 `h`/`Fragment` are just plain functions — nothing about xtags itself cares
 what a file is named. The only reason JSX syntax normally has to live in a
 `.jsx`/`.tsx` file is that `.js`/`.ts` files are, by default, parsed
-*without* JSX support (tsc actively refuses it in `.ts`, since `<Foo>bar`
+_without_ JSX support (tsc actively refuses it in `.ts`, since `<Foo>bar`
 is also valid TypeScript as an old-style type assertion, and the two can't
 be told apart from a `.ts` file's syntax alone). `xtags/esbuild` turns JSX
 parsing on for `.js`/`.ts` files anyway, and throws in auto-injected
@@ -235,12 +253,12 @@ parsing on for `.js`/`.ts` files anyway, and throws in auto-injected
 
 ```js
 // esbuild.config.mjs
-import * as esbuild from 'esbuild';
-import { xtagsEsbuildOptions } from 'xtags/esbuild';
+import * as esbuild from "esbuild";
+import { xtagsEsbuildOptions } from "xtags/esbuild";
 
 await esbuild.build({
-  entryPoints: ['src/main.js'],
-  outfile: 'public/bundle.js',
+  entryPoints: ["src/main.js"],
+  outfile: "public/bundle.js",
   bundle: true,
   ...xtagsEsbuildOptions(),
 });
@@ -266,7 +284,7 @@ no dependency beyond whatever version of esbuild you already have) that:
   `'jsx'` and `.ts`/`.mts` parse as `'tsx'`, instead of their defaults;
 - `inject`s a small shim (`xtags/jsx-shim`) so `h`/`Fragment` are available
   as free variables in every bundled file, without an explicit import. A
-  file that *does* still import them explicitly is unaffected — its own
+  file that _does_ still import them explicitly is unaffected — its own
   local binding shadows the injected one, same as any local declaration.
 
 Pass `overrides` to merge in your own `loader`/`inject` entries, or replace
@@ -275,7 +293,7 @@ anything else (`jsxFactory`, etc).
 ### The trade-off with `tsc`
 
 This is a genuine bundler-level trick, not a tsc feature — `tsc --noEmit`,
-run standalone (the way `npm run typecheck` does), still refuses to *parse*
+run standalone (the way `npm run typecheck` does), still refuses to _parse_
 a `.ts` file containing JSX. That restriction lives in tsc's parser itself;
 nothing in an esbuild config can turn it off. A `.ts` file leaning on this
 needs to be kept out of tsc's `include`/`files` (see
@@ -292,13 +310,13 @@ setups have never had this restriction for `.js` — this only closes the
 gap for `.ts`) — anywhere losing tsc's parse-level safety net for that one
 file is a fine trade for not having to name it `.tsx`.
 
-One more thing worth knowing: this needs a bundler whose *loader
-configuration* you control. It works with esbuild directly (as above), and
+One more thing worth knowing: this needs a bundler whose _loader
+configuration_ you control. It works with esbuild directly (as above), and
 the same idea carries over to Vite (which uses esbuild under the hood —
 see its `esbuild`/`optimizeDeps.esbuildOptions` config) or any other setup
 where you can override the per-extension loader/transform. It does **not**
 work with zero-config script runners like plain `tsx`/`ts-node` used to
-*run* a file directly (rather than bundle it) — those intentionally mirror
+_run_ a file directly (rather than bundle it) — those intentionally mirror
 tsc's restriction and don't expose a loader override, so a `.ts` file with
 JSX in it will still fail to parse under `node --import tsx some-file.ts`.
 This package's own test suite runs that way, which is why its JSX tests

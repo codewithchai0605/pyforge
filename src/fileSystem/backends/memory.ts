@@ -1,4 +1,4 @@
-import type { FileEntry, FileStats, FsOperation } from '../types';
+import type { FileEntry, FileStats, FsOperation } from "../types";
 
 /**
  * An in-memory filesystem under `mem://`, used when the app runs in a plain
@@ -13,21 +13,24 @@ interface Node {
   modified: number;
 }
 
-export const MEMORY_SCHEME = 'mem://';
+export const MEMORY_SCHEME = "mem://";
 
 const nodes = new Map<string, Node>();
 
 function normalize(url: string): string {
-  const path = url.slice(MEMORY_SCHEME.length).replace(/\/+/g, '/').replace(/\/$/, '');
+  const path = url
+    .slice(MEMORY_SCHEME.length)
+    .replace(/\/+/g, "/")
+    .replace(/\/$/, "");
   return MEMORY_SCHEME + path;
 }
 
 function parentOf(url: string): string {
-  return url.slice(0, url.lastIndexOf('/'));
+  return url.slice(0, url.lastIndexOf("/"));
 }
 
 function nameOf(url: string): string {
-  return url.slice(url.lastIndexOf('/') + 1);
+  return url.slice(url.lastIndexOf("/") + 1);
 }
 
 function toEntry(url: string, node: Node): FileEntry {
@@ -49,7 +52,7 @@ function need(url: string): Node {
 
 function ensureDirectory(url: string): void {
   if (url === normalize(MEMORY_SCHEME) || nodes.get(url)?.isDirectory) return;
-  nodes.set(url, { isDirectory: true, content: '', modified: Date.now() });
+  nodes.set(url, { isDirectory: true, content: "", modified: Date.now() });
 }
 
 function childrenOf(url: string): string[] {
@@ -59,10 +62,10 @@ function childrenOf(url: string): string[] {
 /** Creates `mem://workspace` (and parents) if missing. Used to bootstrap the preview. */
 export function memoryEnsureDirectory(url: string): string {
   const u = normalize(url);
-  const parts = u.slice(MEMORY_SCHEME.length).split('/');
+  const parts = u.slice(MEMORY_SCHEME.length).split("/");
   let cur = MEMORY_SCHEME.slice(0, -1);
   for (const part of parts) {
-    cur += '/' + part;
+    cur += "/" + part;
     ensureDirectory(cur);
   }
   return u;
@@ -70,10 +73,11 @@ export function memoryEnsureDirectory(url: string): string {
 
 /** Every file under `rootUrl` as { relativePath: content } (for the dev Python bridge). */
 export function memorySnapshot(rootUrl: string): Record<string, string> {
-  const root = normalize(rootUrl) + '/';
+  const root = normalize(rootUrl) + "/";
   const out: Record<string, string> = {};
   for (const [url, node] of nodes) {
-    if (!node.isDirectory && url.startsWith(root)) out[url.slice(root.length)] = node.content;
+    if (!node.isDirectory && url.startsWith(root))
+      out[url.slice(root.length)] = node.content;
   }
   return out;
 }
@@ -113,7 +117,11 @@ export function memoryFs(rawUrl: string): FsOperation {
       need(url);
       const child = `${url}/${name}`;
       if (nodes.has(child)) throw new Error(`${name} already exists`);
-      const node: Node = { isDirectory: false, content: '', modified: Date.now() };
+      const node: Node = {
+        isDirectory: false,
+        content: "",
+        modified: Date.now(),
+      };
       nodes.set(child, node);
       return toEntry(child, node);
     },
@@ -122,7 +130,11 @@ export function memoryFs(rawUrl: string): FsOperation {
       need(url);
       const child = `${url}/${name}`;
       if (nodes.has(child)) throw new Error(`${name} already exists`);
-      const node: Node = { isDirectory: true, content: '', modified: Date.now() };
+      const node: Node = {
+        isDirectory: true,
+        content: "",
+        modified: Date.now(),
+      };
       nodes.set(child, node);
       return toEntry(child, node);
     },
@@ -130,7 +142,7 @@ export function memoryFs(rawUrl: string): FsOperation {
     async delete() {
       need(url);
       for (const key of [...nodes.keys()]) {
-        if (key === url || key.startsWith(url + '/')) nodes.delete(key);
+        if (key === url || key.startsWith(url + "/")) nodes.delete(key);
       }
     },
 
@@ -139,7 +151,7 @@ export function memoryFs(rawUrl: string): FsOperation {
       const target = `${parentOf(url)}/${newName}`;
       if (nodes.has(target)) throw new Error(`${newName} already exists`);
       for (const key of [...nodes.keys()]) {
-        if (key === url || key.startsWith(url + '/')) {
+        if (key === url || key.startsWith(url + "/")) {
           const moved = target + key.slice(url.length);
           nodes.set(moved, nodes.get(key)!);
           nodes.delete(key);
