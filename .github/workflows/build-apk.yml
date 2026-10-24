@@ -92,8 +92,12 @@ jobs:
       - name: Build web app
         run: npm run build
 
-      # Cordova adds the android platform and plugins from config.xml /
-      # package.json, runs the Chaquopy hook, then calls Gradle.
+      # `cordova build` refuses to run without a platforms/ folder, and platforms/
+      # is gitignored. `cordova prepare` restores the android platform and the
+      # plugins from package.json / config.xml (and runs the Chaquopy hook).
+      - name: Add Cordova platform and plugins
+        run: npx cordova prepare android
+
       - name: Build debug APK
         env:
           PYFORGE_BUILD_PYTHON: ${{ steps.py.outputs.python-path }}
