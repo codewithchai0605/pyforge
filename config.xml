@@ -3,6 +3,7 @@
     <name>PyForge</name>
     <description>A Python IDE for Android: write, run and debug Python with turtle graphics, plots and one-click packages.</description>
     <author email="dev@example.dev">PyForge</author>
+    <hook type="after_prepare" src="hooks/after_prepare/chaquopy-gradle.js" />
     <content src="index.html" />
     <access origin="*" />
     <allow-intent href="http://*/*" />

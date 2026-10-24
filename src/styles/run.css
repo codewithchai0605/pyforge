@@ -42,6 +42,19 @@
   gap: 2px;
   flex: none;
   padding: 0 2px 4px 8px;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.sheet-header::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+
+.sheet-header > * {
+  flex-shrink: 0;
 }
 
 .seg {

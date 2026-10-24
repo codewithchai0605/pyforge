@@ -618,7 +618,8 @@ def install(specs: list[str], progress: Progress = lambda e: None) -> dict:
             raise PkgError(
                 f"No version of {req.name} satisfying “{wanted[key] or 'any'}” can run on this device "
                 "(only wheels built for Android or pure-Python wheels can be installed). "
-                "If it needs compiled code, add it to python/requirements.txt and rebuild the app."
+                "Adding it to python/requirements.txt will only help if a compatible Android wheel exists "
+                "for this app's Python version."
             )
         kind = "pure-Python" if pick.rank == 0 else "native"
         log(f"  Using {pick.filename} ({kind}, from {pick.source})")

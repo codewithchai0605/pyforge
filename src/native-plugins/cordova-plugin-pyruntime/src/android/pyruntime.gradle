@@ -6,16 +6,9 @@
 // Chaquopy (https://chaquo.com/chaquopy/) embeds CPython in the APK. Docs for
 // the DSL used below: https://chaquo.com/chaquopy/doc/current/android.html
 
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-        maven { url "https://chaquo.com/maven" }
-    }
-    dependencies {
-        classpath "com.chaquo.python:gradle:17.1.0"
-    }
-}
+// Cordova applies this file after the app module's buildscript block. The
+// project's after_prepare hook adds the Chaquopy repository and classpath to
+// that earlier block, where Gradle can resolve this plugin.
 
 apply plugin: "com.chaquo.python"
 
@@ -23,7 +16,10 @@ apply plugin: "com.chaquo.python"
 // Settings you may want to change
 // ---------------------------------------------------------------------------
 
-def pyforgePythonVersion = "3.14"
+// 3.13 currently has a much wider selection of Android wheels than 3.14,
+// including NumPy. This lets the in-app manager download those packages only
+// for people who choose them instead of baking them into every APK.
+def pyforgePythonVersion = "3.13"
 
 // Python on the *build machine* must have the same major.minor as above:
 // Chaquopy uses it to run pip for python/requirements.txt. Override with

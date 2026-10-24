@@ -55,6 +55,15 @@ commented out by default **on purpose**: if any line has no wheel for the app's 
 version, the whole Gradle build fails. Enable them one at a time. (The Packages page can
 also _try_ to install compiled wheels at runtime; see "Honest status".)
 
+**Don't add every scientific package here.** PyForge uses Python 3.13 because it has
+Android NumPy wheels, so NumPy can normally be downloaded by the Packages page only for
+the people who choose it. That keeps it out of the base app. The same is true of any
+pure-Python package or package which publishes a compatible Android wheel. A package with
+no compatible Android wheel cannot be installed safely on a phone at all: ship it only in
+a separate, purpose-built app flavor (for example, a "scientific" edition), or obtain/build
+Android wheels for it. Adding it to `requirements.txt` is not a universal workaround; it
+will fail the build if Chaquopy can't resolve a compatible wheel.
+
 ## Develop in a desktop browser
 
 ```bash
