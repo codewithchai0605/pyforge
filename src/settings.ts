@@ -9,6 +9,12 @@ export interface Settings {
   autoSave: Signal<boolean>;
   /** Ask before leaving the app even when nothing is unsaved. */
   confirmOnExit: Signal<boolean>;
+  /** Show program output in a terminal (xterm.js) instead of the classic console. */
+  terminalConsole: Signal<boolean>;
+  /** Text size in the terminal and the terminal-style console. */
+  terminalFontSize: Signal<number>;
+  /** Draw the terminal with WebGL (faster on big output; falls back by itself if the device has none). */
+  terminalWebgl: Signal<boolean>;
 }
 
 const KEY = "pyforge.settings.v1";
@@ -39,6 +45,9 @@ export function createSettings(): Settings {
     saveOnRun: signal(bool(saved.saveOnRun, true)),
     autoSave: signal(bool(saved.autoSave, true)),
     confirmOnExit: signal(bool(saved.confirmOnExit, true)),
+    terminalConsole: signal(bool(saved.terminalConsole, true)),
+    terminalFontSize: signal(num(saved.terminalFontSize, 13, 8, 24)),
+    terminalWebgl: signal(bool(saved.terminalWebgl, false)),
   };
 
   const persist = (): void => {
@@ -51,6 +60,9 @@ export function createSettings(): Settings {
           saveOnRun: settings.saveOnRun.peek(),
           autoSave: settings.autoSave.peek(),
           confirmOnExit: settings.confirmOnExit.peek(),
+          terminalConsole: settings.terminalConsole.peek(),
+          terminalFontSize: settings.terminalFontSize.peek(),
+          terminalWebgl: settings.terminalWebgl.peek(),
         }),
       );
     } catch {

@@ -81,14 +81,14 @@ function pipViaLines(
       (line) => {
         const ev = JSON.parse(line) as
           | {
-              t: "result";
-              payload?: {
-                ok: boolean;
-                result?: unknown;
-                error?: string;
-                cancelled?: boolean;
-              };
-            }
+            t: "result";
+            payload?: {
+              ok: boolean;
+              result?: unknown;
+              error?: string;
+              cancelled?: boolean;
+            };
+          }
           | PipProgress;
         if (ev.t === "result") {
           if (ev.payload?.ok) resolve(ev.payload.result);
@@ -112,9 +112,9 @@ function makePip(start: LineStarter, cancel: () => void): PipApi {
   return {
     cancel,
     list: () =>
-      pipViaLines("list", {}, () => {}, start) as Promise<InstalledPackage[]>,
+      pipViaLines("list", {}, () => { }, start) as Promise<InstalledPackage[]>,
     lookup: (spec) =>
-      pipViaLines("lookup", { spec }, () => {}, start) as Promise<LookupResult>,
+      pipViaLines("lookup", { spec }, () => { }, start) as Promise<LookupResult>,
     install: (specs, onProgress) =>
       pipViaLines("install", { specs }, onProgress, start) as ReturnType<
         PipApi["install"]
@@ -174,7 +174,7 @@ export function cordovaRuntime(
     pip: makePip(
       (call, payload, onLine, onError) =>
         execStream("pip", [call, payload], onLine, onError),
-      () => void exec("pipCancel").catch(() => {}),
+      () => void exec("pipCancel").catch(() => { }),
     ),
 
     insets: () => exec<Insets>("insets").catch(() => null),
@@ -185,7 +185,7 @@ export function cordovaRuntime(
 
 const BRIDGE = "/__py";
 
-async function postJson(url: string, body: unknown): Promise<Response> {
+export async function postJson(url: string, body: unknown): Promise<Response> {
   return fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -194,7 +194,7 @@ async function postJson(url: string, body: unknown): Promise<Response> {
 }
 
 /** Reads an NDJSON response body, calling `onLine` for each complete line. */
-async function readLines(
+export async function readLines(
   res: Response,
   onLine: (line: string) => void,
 ): Promise<void> {
@@ -202,7 +202,7 @@ async function readLines(
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  for (;;) {
+  for (; ;) {
     const { done, value } = await reader.read();
     if (value) buffer += decoder.decode(value, { stream: true });
     let nl: number;
@@ -256,7 +256,7 @@ export function devRuntime(base = ""): PyRuntime {
 
       const send = (path: string, body: unknown): void => {
         const go = (): void =>
-          void postJson(url(`/runs/${runId}/${path}`), body).catch(() => {});
+          void postJson(url(`/runs/${runId}/${path}`), body).catch(() => { });
         if (runId) go();
         else queued.push(go);
       };
@@ -281,7 +281,7 @@ export function devRuntime(base = ""): PyRuntime {
       let pipId: string | null = null;
       let cancelWanted = false;
       const sendCancel = (): void =>
-        void postJson(url(`/pip/${pipId}/cancel`), {}).catch(() => {});
+        void postJson(url(`/pip/${pipId}/cancel`), {}).catch(() => { });
       return makePip(
         (call, payload, onLine, onError) => {
           pipId = null;
@@ -323,15 +323,15 @@ export function noneRuntime(): PyRuntime {
       });
       return {
         done: Promise.resolve({ t: "exit", code: 1, ms: 0 }),
-        stdin() {},
-        gui() {},
+        stdin() { },
+        gui() { },
         stop: () => Promise.resolve(),
       };
     },
     imageUrl: () => Promise.reject(new Error(reason)),
     insets: () => Promise.resolve(null),
     pip: {
-      cancel() {},
+      cancel() { },
       list: () => Promise.resolve([]),
       lookup: async () => unavailable(),
       install: async () => unavailable(),

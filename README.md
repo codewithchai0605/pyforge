@@ -80,8 +80,8 @@ Ctrl/Cmd+Enter = Run/Stop, Ctrl/Cmd+S = Save.
 
 ```bash
 npm test                  # everything below
-npm run test:python       # pytest: runner, turtle, matplotlib backend, package manager (fake PyPI)
-npm run test:ts           # ANSI parser, turtle scene, console view, navigation, app logic, TS<->Python e2e (incl. cancel)
+npm run test:python       # pytest: runner, turtle, matplotlib backend, package manager (fake PyPI), the C PTY core, the JNI layer in a JVM (needs a JDK)
+npm run test:ts           # ANSI parser, turtle scene, console view, terminal (xterm, line editor, touch selection, sessions), navigation, app logic, TS<->Python e2e (incl. cancel, and a real bash on a PTY)
 npm run test:app          # the original filesystem/editor tests (needs Bun)
 npm run build && npm run smoke-test   # drives the built UI against real Python in jsdom
 ```
@@ -114,6 +114,15 @@ otherwise). `PYFORGE_PYTHON` selects the interpreter for the TS tests.
   `files/pyforge/site-packages`. On Android it accepts **only** pure wheels and
   `android_<api>_<abi>` wheels for this device; it will never install a `manylinux` wheel
   (glibc builds crash on Android).
+
+## Terminal
+
+**Menu -> Terminal** opens a real shell (tabs, search, Copy/Paste, sticky Ctrl/Alt key bar) and program output
+is shown in the same xterm.js terminal (**Settings -> Terminal-style console**; turn it off for the classic
+console). On the phone the shell is Android's own `sh` (no Python in it); on your computer (`npm run dev`) it is
+your own shell. Long-press selects text, drag the handles, then Copy / Paste / Select all. Details and limits:
+DEVELOPMENT.md, "Terminal". **The Android part (NDK build, PTY under Android, touch gestures, soft keyboard) has
+not been run on a device.**
 
 ## Honest status: what is and isn't verified
 

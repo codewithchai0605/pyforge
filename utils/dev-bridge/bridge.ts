@@ -15,6 +15,9 @@
  *   POST /__py/pip                  -> NDJSON progress, last line {"t":"result"} (header x-pip-id)
  *   POST /__py/pip/:id/cancel
  *   GET  /__py/plot?path=...        -> a PNG the program saved (cache dir only)
+ *   POST /__py/term/open            -> NDJSON stream of a shell on a PTY: {"t":"open","id"},
+ *                                      {"t":"out","b":base64}, {"t":"exit","code"}
+ *   POST /__py/term/:id/in|resize|close
  */
 import {
   spawn,
@@ -80,6 +83,8 @@ export function createBridge(
   ];
   const runs = new Map<string, ChildProcessWithoutNullStreams>();
   const pips = new Map<string, ChildProcessWithoutNullStreams>();
+  const terms = new Map<string, ChildProcessWithoutNullStreams>();
+  const ptyHost = path.resolve("utils/dev-bridge/pty_host.py");
   let versionCache: string | null = null;
 
   const pythonVersion = (): string => {
@@ -99,6 +104,12 @@ export function createBridge(
     if (!insideDir(dirs.projects, abs))
       throw new Error(`path escapes the workspace: ${rel}`);
     return abs;
+  };
+
+  /** A shell's start folder: the app sends the workspace's absolute path; anything outside it falls back to the workspace. */
+  const termCwd = (dir: string): string => {
+    const abs = path.resolve(dir);
+    return path.isAbsolute(dir) && insideDir(dirs.projects, abs) ? abs : inProjects(dir);
   };
 
   const json = (res: ServerResponse, code: number, body: unknown): void => {
@@ -163,7 +174,7 @@ export function createBridge(
         child.stderr.on("data", (d: Buffer) =>
           process.stderr.write(`[py host] ${d}`),
         );
-        child.stdin.on("error", () => {});
+        child.stdin.on("error", () => { });
         // nosniff: without it WebKit buffers an open streaming response while it
         // sniffs the type, so live output wouldn't appear until the program ended.
         res.writeHead(200, {
@@ -175,6 +186,57 @@ export function createBridge(
         child.stdout.pipe(res);
         res.on("close", () => child.kill("SIGKILL"));
         child.stdin.write(JSON.stringify({ op: "run", req: request }) + "\n");
+        return true;
+      }
+
+      if (req.method === "POST" && route === "/term/open") {
+        const body = JSON.parse((await readBody(req)) || "{}") as {
+          cols?: number;
+          rows?: number;
+          cwd?: string;
+          shell?: string;
+        };
+        const id = randomUUID();
+        const args = [
+          "-u",
+          ptyHost,
+          "--cols",
+          String(Math.max(2, Math.floor(body.cols ?? 80))),
+          "--rows",
+          String(Math.max(1, Math.floor(body.rows ?? 24))),
+          "--cwd",
+          typeof body.cwd === "string" && body.cwd ? termCwd(body.cwd) : dirs.projects,
+        ];
+        if (typeof body.shell === "string" && body.shell)
+          args.push("--shell", body.shell);
+        const child = spawn(python, args, { env, cwd: work });
+        terms.set(id, child);
+        child.on("close", () => terms.delete(id));
+        child.stdin.on("error", () => { });
+        child.stderr.on("data", (d: Buffer) =>
+          process.stderr.write(`[pty host] ${d}`),
+        );
+        res.writeHead(200, {
+          "content-type": "application/x-ndjson",
+          "x-content-type-options": "nosniff",
+          "cache-control": "no-store",
+        });
+        res.write(JSON.stringify({ t: "open", id }) + "\n");
+        child.stdout.pipe(res);
+        res.on("close", () => child.kill("SIGKILL"));
+        return true;
+      }
+
+      const tm = /^\/term\/([^/]+)\/(in|resize|close)$/.exec(route);
+      if (req.method === "POST" && tm) {
+        const child = terms.get(tm[1]!);
+        if (!child) return (json(res, 404, { error: "no such terminal" }), true);
+        const payload = JSON.parse((await readBody(req)) || "{}") as Record<
+          string,
+          unknown
+        >;
+        child.stdin.write(JSON.stringify({ op: tm[2], ...payload }) + "\n");
+        json(res, 200, { ok: true });
         return true;
       }
 
@@ -205,7 +267,7 @@ export function createBridge(
         );
         pips.set(id, child);
         child.on("close", () => pips.delete(id));
-        child.stdin.on("error", () => {});
+        child.stdin.on("error", () => { });
         child.stderr.on("data", (d: Buffer) =>
           process.stderr.write(`[py pip] ${d}`),
         );

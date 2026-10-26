@@ -125,6 +125,27 @@ export function SettingsPage({
         />
       </div>
 
+      <h2 class="section-title">Terminal</h2>
+      <div class="settings-group">
+        <SwitchRow
+          label="Terminal-style console"
+          hint="Show program output in a terminal: colors, progress bars and tap-and-hold selection. Turn off for the classic console."
+          value={settings.terminalConsole}
+        />
+        <StepperRow
+          label="Terminal text size"
+          hint="For the Terminal page and the terminal-style console"
+          value={settings.terminalFontSize}
+          min={8}
+          max={24}
+        />
+        <SwitchRow
+          label="GPU rendering"
+          hint="Draw the terminal with WebGL. Faster for large output; switches itself off if the device cannot do it."
+          value={settings.terminalWebgl}
+        />
+      </div>
+
       <h2 class="section-title">App</h2>
       <div class="settings-group">
         <SwitchRow

@@ -44,6 +44,28 @@ android {
                 abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
             }
         }
+        externalNativeBuild {
+            cmake {
+                // Android 15+ devices may use 16 KB memory pages; native
+                // libraries must be built to be loadable on them.
+                arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
+            }
+        }
+    }
+
+    // The NDK that builds libpyforge_pty.so. This is AGP 8.10's default; it is
+    // pinned so CI installs exactly the one that gets used. Override with
+    // -PpyforgeNdkVersion=... if you have a different one.
+    ndkVersion (project.findProperty("pyforgeNdkVersion") ?: "27.0.12077973").toString()
+
+    // libpyforge_pty.so: the pseudo-terminal behind the Terminal page.
+    // Sources are copied to app/src/main/cpp by plugin.xml. Building it needs
+    // the Android NDK and CMake (sdkmanager "ndk;27.0.12077973" "cmake;3.22.1";
+    // the Android Gradle plugin downloads them itself when licences are accepted).
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+        }
     }
 }
 

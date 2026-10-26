@@ -16,7 +16,7 @@ import { pushBack } from "@/components/backStack";
  * registers with backStack.ts, so Back always closes whichever layer was
  * opened most recently (a page opened over the output sheet closes before it).
  */
-export type RouteName = "home" | "packages" | "settings";
+export type RouteName = "home" | "packages" | "settings" | "terminal";
 
 export interface Router {
   /** Bottom → top. Always starts with 'home'. */

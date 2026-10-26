@@ -51,9 +51,11 @@ jobs:
           java-version: "17"
 
       # cordova-android 15 targets SDK 36 and wants build-tools >= 36.0.0.
+      # The NDK and CMake build libpyforge_pty.so, the pseudo-terminal behind
+      # the Terminal page (src/android/cpp in the pyruntime plugin).
       - uses: android-actions/setup-android@v4
         with:
-          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
+          packages: "platform-tools platforms;android-36 build-tools;36.0.0 ndk;27.0.12077973 cmake;3.22.1"
 
       # Cordova needs a system `gradle` on PATH to generate the Gradle wrapper
       # (it then uses that wrapper, also 8.14.2). Also caches ~/.gradle.
@@ -96,7 +98,7 @@ jobs:
       # is gitignored. `cordova prepare` restores the android platform and the
       # plugins from package.json / config.xml (and runs the Chaquopy hook).
       - name: Add Cordova platform and plugins
-        run: npx cordova prepare android
+        run: npm run cordova:plugins && npx cordova prepare android
 
       - name: Build debug APK
         env:

@@ -63,7 +63,8 @@ editor/console/packages page render, a package install reaches PyPI. Everything 
 "not verified on device" in the README after that point is still unconfirmed, in particular:
 the new inset measurement, `setSupportZoom(false)`, cancel on a real download, back-button chain.
 
-**Not started (deliberately):** the real terminal (see "Terminal: research notes" below).
+**Terminal (tier 1) is implemented** (see "Terminal" below): xterm.js UI, a real shell on a PTY, and the
+output console rendered by xterm. Tier 2 (proot + Debian/Ubuntu) is **not** started.
 The user also said they have "one more thing to add"; it had not been described yet.
 
 ## Repository map
@@ -174,10 +175,47 @@ started in the same command as the screenshot in a sandbox where background jobs
 - `cordova.exec`'d `PyRuntime` is also where native clipboard / selection-bar calls live
   (`src/native/device.ts`); every call has a browser fallback so the desktop preview keeps working.
 
-## Terminal: research notes (NOT implemented)
+## Terminal (tier 1: implemented)
 
-The user wants a real terminal: xterm.js + a native plugin + a Debian/Ubuntu environment.
-Feasibility was researched and the facts below were verified; no code was written.
+What exists, and how it is wired:
+
+- **Frontend** `src/terminal/`: `terminalView.ts` wraps xterm.js 6 with the addons fit, unicode11, web-links,
+  search, clipboard (OSC 52) and optional WebGL; `touchSelection.ts` adds long-press selection, drag handles and
+  a Copy / Paste / Select all bar (xterm has no touch selection of its own); `keyBar.tsx` is the Esc / Tab /
+  sticky Ctrl+Alt / arrows row; `sessions.ts` keeps shells alive outside the page; `terminalPage.tsx` is the page
+  (tabs, search, menu). Copy/paste go through the native clipboard (`src/native/device.ts`) because the web
+  clipboard API cannot read inside an Android WebView. Hardware keys: Ctrl+Shift+C/V, Ctrl/Shift+Insert,
+  Ctrl+V; Ctrl+C copies only when text is selected, otherwise it is the interrupt.
+- **Output console**: `terminalConsole.ts` is the same `ConsoleLike` interface as the classic `ConsoleView`,
+  drawn by xterm. `input()` is done by `lineEditor.ts` (echo, wrap-aware editing, history, Ctrl+D, Ctrl+C,
+  multi-line paste). `consoleSwitch.ts` swaps the two live (Settings -> "Terminal-style console") and falls
+  back to the classic console if xterm cannot start.
+- **Transport** `src/native/terminal.ts`: `android` (Cordova plugin `PyTerminal`), `dev` (bridge route
+  `/__py/term/*` + `utils/dev-bridge/pty_host.py`, a real shell on a PTY on your computer), `none`. Output is raw
+  bytes (ArrayBuffer on Android) so xterm decodes UTF-8 across chunk borders.
+- **Native** (`cordova-plugin-pyruntime`): `cpp/pty_core.c` (forkpty; blocks signals across the fork so one sent
+  right after spawn is not swallowed by the JVM's inherited handlers; closes inherited fds), `cpp/pty_jni.c`,
+  `PtyNative.kt`, `TerminalPlugin.kt` (reader thread + one io thread per session so a late write never hits a
+  recycled fd). Built by CMake (`externalNativeBuild` in `pyruntime.gradle`; CI installs `ndk;27.0.12077973` and
+  `cmake;3.22.1`; 16 KB page-size flag on).
+- **Limits**: the shell is Android's own (mksh + toybox): **no python/pip on its PATH** (that is what tier 2 is
+  for). Shells end with the app process (no foreground service yet). The dev bridge streams over `fetch`;
+  WebKit-based browsers (Safari, WebKitGTK) deliver the stream in coarse batches, so the dev terminal looks
+  laggy there; use Chrome for the dev preview (the Android app does not use `fetch`). Mouse reporting from
+  touch (vim/tmux mouse mode) is not forwarded.
+- **Verified here**: all TypeScript logic against a real xterm engine (`@xterm/headless`) and the real xterm in
+  jsdom; transport end to end (TS -> bridge -> PTY -> bash); the C core with ctypes; the JNI library inside a real
+  JVM (`tests/native/PtyJniCheck.java`, needs a JDK for `jni.h`); the Kotlin compiled and loaded against the JNI
+  library; rendering in WebKitGTK. **Not verified: anything on a device or emulator** (the NDK/CMake build,
+  `forkpty` under bionic and SELinux, Cordova ArrayBuffer delivery, the soft keyboard + xterm textarea, real touch
+  gestures, WebGL).
+
+## Terminal: tier 2 research notes (NOT implemented)
+
+Tier 1 is built (section above). These notes are for tier 2, a Debian/Ubuntu userland under proot,
+which gives `apt`, `python3`, `pip`, `git`... Feasibility was researched and the facts below were verified;
+no tier 2 code was written. The PTY, the sessions, and the frontend described here already exist; tier 2
+only adds a different program to run (proot + its arguments) and the download/extract step.
 
 - **W^X**: apps targeting API 29+ cannot `exec` files from writable storage. Ship executables as
   `lib<name>.so` in `jniLibs/<abi>/`, set `extractNativeLibs="true"` /

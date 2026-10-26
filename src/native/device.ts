@@ -74,5 +74,21 @@ export function defaultClipboardBackend(): ClipboardBackend {
  */
 export function suppressSystemSelectionBar(on: boolean): void {
   if (!hasCordova()) return;
-  void exec("selectionBar", [on]).catch(() => {});
+  void exec("selectionBar", [on]).catch(() => { });
+}
+
+/**
+ * Opens a web link in the system browser. Inside the WebView a plain
+ * `window.open` is swallowed; Cordova's `navigator.app.loadUrl` with
+ * `openExternal` hands the URL to Android (https links are allowed by
+ * `<allow-intent>` in config.xml). In a desktop browser a new tab is used.
+ */
+export function openExternal(url: string): void {
+  const app = (
+    navigator as Navigator & {
+      app?: { loadUrl?: (u: string, props: { openExternal: boolean }) => void };
+    }
+  ).app;
+  if (hasCordova() && app?.loadUrl) app.loadUrl(url, { openExternal: true });
+  else window.open(url, "_blank", "noopener");
 }

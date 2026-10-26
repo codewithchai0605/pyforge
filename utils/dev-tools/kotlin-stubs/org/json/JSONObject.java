@@ -1,2 +1,2 @@
 package org.json;
-public class JSONObject { public JSONObject() {} public JSONObject(String s) throws JSONException {} public JSONObject put(String k, Object v) throws JSONException { return this; } public static String quote(String s) { return s; } }
+public class JSONObject { public JSONObject() {} public JSONObject(String s) throws JSONException {} public JSONObject put(String k, Object v) throws JSONException { return this; } public static String quote(String s) { return s; } public int optInt(String k, int d) { return d; } public String optString(String k, String d) { return d; } public JSONObject put(String k, int v) throws JSONException { return this; } }

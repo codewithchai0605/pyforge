@@ -1,0 +1,15 @@
+{
+  "configurations": [
+    {
+      "name": "Android NDK",
+      "compilerPath": "${env:ANDROID_HOME}/ndk/28.2.13676358/toolchains/llvm/prebuilt/windows-x86_64/bin/clang.exe",
+      "compilerArgs": ["--target=aarch64-linux-android24"],
+      "includePath": [
+        "${workspaceFolder}/src/native-plugins/cordova-plugin-pyruntime/src/android/cpp/**"
+      ],
+      "cStandard": "c11",
+      "intelliSenseMode": "linux-clang-arm64"
+    }
+  ],
+  "version": 4
+}

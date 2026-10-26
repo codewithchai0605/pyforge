@@ -1,6 +1,6 @@
 import { computed, signal, type Signal } from "xtags";
 import type { GuiEvent } from "@/python/protocol";
-import { ConsoleView } from "./consoleView";
+import { ConsoleView, type ConsoleCallbacks, type ConsoleLike } from "./consoleView";
 import { DisplayView } from "./displayView";
 import { icon } from "./icons";
 import { pushBack } from "./backStack";
@@ -17,11 +17,13 @@ export interface RunPanelOptions {
   onStop(): void;
   /** Re-run the last program (the ↻ button after it finished). */
   onRerun(): void;
+  /** Builds the console (the app passes a switchable terminal/classic one). Defaults to the classic console. */
+  createConsole?(callbacks: ConsoleCallbacks): ConsoleLike;
 }
 
 export interface RunPanel {
   readonly el: HTMLElement;
-  readonly console: ConsoleView;
+  readonly console: ConsoleLike;
   readonly display: DisplayView;
   readonly open: Signal<boolean>;
   readonly expanded: Signal<boolean>;
@@ -49,10 +51,14 @@ export function createRunPanel(options: RunPanelOptions): RunPanel {
   const running = computed(() => status().kind === "running");
   const displayBadge = signal(false);
 
-  const consoleView = new ConsoleView({
+  const consoleCallbacks: ConsoleCallbacks = {
     onInput: options.onInput,
     onJump: options.onJump,
-  });
+    onInterrupt: options.onStop,
+  };
+  const consoleView: ConsoleLike = options.createConsole
+    ? options.createConsole(consoleCallbacks)
+    : new ConsoleView(consoleCallbacks);
   const display = new DisplayView({
     onGuiEvent: options.onGuiEvent,
     onActivity: () => {
@@ -63,7 +69,7 @@ export function createRunPanel(options: RunPanelOptions): RunPanel {
     },
   });
   let userPickedTab = false;
-  let releaseBack = (): void => {};
+  let releaseBack = (): void => { };
 
   const setTab = (next: "console" | "display"): void => {
     tab.set(next);

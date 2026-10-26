@@ -11,7 +11,11 @@ import type {
 import { setClipboardNotifier } from "@/editor/clipboard";
 import { keyModifiers } from "@/editor/modifiers";
 import { attachPinchZoom } from "@/editor/pinchZoom";
-import { suppressSystemSelectionBar } from "@/native/device";
+import { openExternal, suppressSystemSelectionBar } from "@/native/device";
+import { createTerminalBackend } from "@/native/terminal";
+import { createTerminalConsole } from "@/terminal/createConsole";
+import { TerminalManager } from "@/terminal/sessions";
+import { createTerminalPage } from "@/terminal/terminalPage";
 import { createRouter } from "@/navigation";
 import { createSettings, loadSession, saveSession } from "@/settings";
 import { createWorkspace } from "@/workspace";
@@ -21,6 +25,7 @@ import { choiceDialog, confirmDialog } from "@/components/dialogs";
 import { createFileBrowser } from "@/components/fileBrowser";
 import { PackagesPage } from "@/components/packagesPage";
 import { createQuickTools } from "@/components/quickTools";
+import { ConsoleSwitch } from "@/components/consoleSwitch";
 import { createRunPanel } from "@/components/runPanel";
 import {
   createSelectionMenu,
@@ -155,6 +160,34 @@ async function start(): Promise<void> {
     onJump: (path, line) => void jumpToTraceback(path, line),
     onStop: () => void stop(),
     onRerun: () => void (lastRun === "repl" ? openRepl() : runActive()),
+    // The console is a terminal (xterm.js) or the classic DOM console, per
+    // Settings, switchable live. If xterm.js can't start in this WebView the
+    // classic console stays.
+    createConsole: (callbacks) => {
+      const sw = new ConsoleSwitch({
+        callbacks,
+        createTerminal: (cb) =>
+          createTerminalConsole(cb, {
+            settings,
+            notify: (message, kind) => toast(message, kind),
+          }),
+        onFallback: () =>
+          toast(
+            "The terminal-style console can’t start on this device; using the classic console.",
+            "info",
+          ),
+      });
+      watch(
+        () => settings.terminalConsole(),
+        (on) => sw.use(on ? "terminal" : "classic"),
+      );
+      watch(
+        () => [settings.terminalFontSize(), settings.terminalWebgl()] as const,
+        () => sw.applyAppearance(),
+        { defer: true },
+      );
+      return sw;
+    },
   });
 
   async function jumpToTraceback(path: string, line: number): Promise<void> {
@@ -302,8 +335,22 @@ async function start(): Promise<void> {
     editorManager.closeFile(file.id);
   };
 
+  // Shells live in the manager, so leaving the Terminal page keeps them running.
+  const terminals = new TerminalManager({
+    backend: createTerminalBackend(runtime.kind),
+    settings,
+    notify: (message, kind) => toast(message, kind),
+    openUrl: openExternal,
+    cwd: info?.projects,
+    onTraceback: (path, line) => {
+      router.home();
+      void jumpToTraceback(path, line);
+    },
+  });
+
   const pages: Node[] = [
     PackagesPage({ router, runtime, info }),
+    createTerminalPage({ router, manager: terminals, settings }),
     SettingsPage({ router, settings, info }),
   ];
 
@@ -349,6 +396,7 @@ async function start(): Promise<void> {
     }
 
     await stop();
+    terminals.closeAll(); // hang up the shells instead of leaving them to be killed
     const app = (navigator as Navigator & { app?: { exitApp(): void } }).app;
     if (app) app.exitApp();
     else toast("Exit is only available in the Android app.", "info");
@@ -478,6 +526,8 @@ async function start(): Promise<void> {
       router,
       selectionMenu,
       keyModifiers,
+      settings,
+      terminals,
     },
   });
 

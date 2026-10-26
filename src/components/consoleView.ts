@@ -5,6 +5,30 @@ export interface ConsoleCallbacks {
   onInput(text: string | null): void;
   /** A traceback location was tapped. */
   onJump(path: string, line: number): void;
+  /** Ctrl+C in the terminal-style console: stop the running program. */
+  onInterrupt?(): void;
+}
+
+/**
+ * What the run panel and main.ts need from a console. Two implementations:
+ * ConsoleView below (the classic DOM console) and TerminalConsole
+ * (src/terminal/terminalConsole.ts, xterm.js).
+ */
+export interface ConsoleLike {
+  readonly el: HTMLElement;
+  /** Append program output. `kind` selects stdout vs stderr styling. */
+  write(kind: "out" | "err", text: string): void;
+  /** A line from PyForge itself (not the program): "Running main.py", exit status, etc. */
+  system(text: string, tone?: "info" | "ok" | "error"): void;
+  clear(): void;
+  /** End of program: release held-back characters and hide the input. */
+  finish(): void;
+  /** Plain text of everything shown (for tests). */
+  text(): string;
+  /** Show the input row / start reading a line: the program is blocked on stdin. */
+  showInput(prompt?: string): void;
+  hideInput(): void;
+  readonly waitingForInput: boolean;
 }
 
 const MAX_LINES = 4000;
@@ -18,7 +42,7 @@ const TRACEBACK = /File "(.+?)", line (\d+)/;
  * written. "\r" arms an overwrite, so the *next* text wipes the line first
  * (progress bars); "\n" closes the line and starts a new one.
  */
-export class ConsoleView {
+export class ConsoleView implements ConsoleLike {
   readonly el: HTMLElement;
   private readonly log: HTMLElement;
   private readonly inputRow: HTMLFormElement;

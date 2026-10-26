@@ -18,6 +18,14 @@
             </feature>
         </config-file>
 
+        <!-- Real shells on pseudo-terminals for the Terminal page (TerminalPlugin.kt).
+             Created lazily: nothing runs until the first terminal is opened. -->
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="PyTerminal">
+                <param name="android-package" value="com.pyforge.pyruntime.TerminalPlugin" />
+            </feature>
+        </config-file>
+
         <!-- Kotlin is opt-in in cordova-android 15. (Also set in the app's
              own config.xml; both are harmless together.) -->
         <config-file target="config.xml" parent="/*">
@@ -48,6 +56,16 @@
         <source-file src="src/android/PythonRunnerService.kt" target-dir="app/src/main/kotlin/com/pyforge/pyruntime" />
         <source-file src="src/android/PySink.kt" target-dir="app/src/main/kotlin/com/pyforge/pyruntime" />
         <source-file src="src/android/PyForgeWebView.kt" target-dir="app/src/main/kotlin/com/pyforge/pyruntime" />
+        <source-file src="src/android/PtyNative.kt" target-dir="app/src/main/kotlin/com/pyforge/pyruntime" />
+        <source-file src="src/android/TerminalPlugin.kt" target-dir="app/src/main/kotlin/com/pyforge/pyruntime" />
+
+        <!-- The pseudo-terminal library (libpyforge_pty.so), built by CMake from
+             app/src/main/cpp; pyruntime.gradle points externalNativeBuild at it.
+             (tests/python/test_plugin_xml.py fails if this list and the files disagree.) -->
+        <source-file src="src/android/cpp/CMakeLists.txt" target-dir="app/src/main/cpp" />
+        <source-file src="src/android/cpp/pty_core.h" target-dir="app/src/main/cpp" />
+        <source-file src="src/android/cpp/pty_core.c" target-dir="app/src/main/cpp" />
+        <source-file src="src/android/cpp/pty_jni.c" target-dir="app/src/main/cpp" />
 
         <!-- Python sources, picked up by Chaquopy from app/src/main/python.
              (Generated from the file tree; tests/python/test_plugin_xml.py
