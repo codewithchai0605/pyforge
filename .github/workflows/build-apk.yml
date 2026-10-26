@@ -35,7 +35,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
+
+      - uses: oven-sh/setup-bun@v2
 
       # Chaquopy runs pip on the build machine, and its Python minor version must
       # match the app's (3.13, see pyruntime.gradle).
@@ -88,22 +89,22 @@ jobs:
           fi
 
       - name: Install JS dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       # Typecheck + bundle into www/js and www/css (those are gitignored).
       - name: Build web app
-        run: npm run build
+        run: bun run build
 
       # `cordova build` refuses to run without a platforms/ folder, and platforms/
       # is gitignored. `cordova prepare` restores the android platform and the
       # plugins from package.json / config.xml (and runs the Chaquopy hook).
       - name: Add Cordova platform and plugins
-        run: npm run cordova:plugins && npx cordova prepare android
+        run: bun run cordova:plugins && bun run cordova prepare android
 
       - name: Build debug APK
         env:
           PYFORGE_BUILD_PYTHON: ${{ steps.py.outputs.python-path }}
-        run: npx cordova build android --debug
+        run: bun run cordova build android --debug
 
       - name: Check APK
         run: |

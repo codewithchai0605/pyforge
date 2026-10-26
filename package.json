@@ -7,17 +7,17 @@
   "scripts": {
     "dev": "tsx utils/scripts/dev.ts",
     "dev:android": "tsx utils/scripts/dev.ts android",
-    "build": "npm run typecheck && tsx utils/scripts/build.ts",
+    "build": "bun run typecheck && tsx utils/scripts/build.ts",
     "cordova:plugins": "tsx utils/scripts/add-plugin.ts",
     "clean": "tsx utils/scripts/clean.ts",
     "typecheck": "tsc --noEmit",
     "smoke-test": "tsx utils/scripts/smoke-test.mts",
-    "test": "npm run test:ts && npm run test:app && npm run test:python",
+    "test": "bun run test:ts && bun run test:app && bun run test:python",
     "test:ts": "tsx --test tests/ts/*.test.ts",
     "test:python": "python3 -m pytest tests/python -q",
-    "cordova:prepare": "npm run cordova:plugins && npm run build && cordova prepare",
-    "cordova:run": "npm run cordova:plugins && npm run build && cordova run android",
-    "cordova:build": "npm run cordova:plugins && npm run build && cordova build android",
+    "cordova:prepare": "bun run cordova:plugins && bun run build && cordova prepare",
+    "cordova:run": "bun run cordova:plugins && bun run build && cordova run android",
+    "cordova:build": "bun run cordova:plugins && bun run build && cordova build android",
     "test:app": "bun test src/fileSystem/test src/editorManager/test"
   },
   "keywords": [
@@ -87,5 +87,6 @@
   },
   "engines": {
     "node": ">=20.11"
-  }
+  },
+  "packageManager": "bun@1.4.4"
 }
