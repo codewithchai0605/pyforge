@@ -1,6 +1,10 @@
 import { computed, signal, type Signal } from "xtags";
 import type { GuiEvent } from "@/python/protocol";
-import { ConsoleView, type ConsoleCallbacks, type ConsoleLike } from "./consoleView";
+import {
+  ConsoleView,
+  type ConsoleCallbacks,
+  type ConsoleLike,
+} from "./consoleView";
 import { DisplayView } from "./displayView";
 import { icon } from "./icons";
 import { pushBack } from "./backStack";
@@ -69,7 +73,7 @@ export function createRunPanel(options: RunPanelOptions): RunPanel {
     },
   });
   let userPickedTab = false;
-  let releaseBack = (): void => { };
+  let releaseBack = (): void => {};
 
   const setTab = (next: "console" | "display"): void => {
     tab.set(next);

@@ -10,15 +10,18 @@
  */
 import type {
   GuiEvent,
+  IndexStatus,
   Insets,
   InstalledPackage,
   LookupResult,
+  PackageInfo,
   PipApi,
   PipProgress,
   PyEvent,
   PyRuntime,
   RunHandle,
   RuntimeInfo,
+  UpdateCheck,
 } from "@/python/protocol";
 import { PipError } from "@/python/protocol";
 
@@ -81,14 +84,14 @@ function pipViaLines(
       (line) => {
         const ev = JSON.parse(line) as
           | {
-            t: "result";
-            payload?: {
-              ok: boolean;
-              result?: unknown;
-              error?: string;
-              cancelled?: boolean;
-            };
-          }
+              t: "result";
+              payload?: {
+                ok: boolean;
+                result?: unknown;
+                error?: string;
+                cancelled?: boolean;
+              };
+            }
           | PipProgress;
         if (ev.t === "result") {
           if (ev.payload?.ok) resolve(ev.payload.result);
@@ -112,9 +115,9 @@ function makePip(start: LineStarter, cancel: () => void): PipApi {
   return {
     cancel,
     list: () =>
-      pipViaLines("list", {}, () => { }, start) as Promise<InstalledPackage[]>,
+      pipViaLines("list", {}, () => {}, start) as Promise<InstalledPackage[]>,
     lookup: (spec) =>
-      pipViaLines("lookup", { spec }, () => { }, start) as Promise<LookupResult>,
+      pipViaLines("lookup", { spec }, () => {}, start) as Promise<LookupResult>,
     install: (specs, onProgress) =>
       pipViaLines("install", { specs }, onProgress, start) as ReturnType<
         PipApi["install"]
@@ -123,6 +126,41 @@ function makePip(start: LineStarter, cancel: () => void): PipApi {
       pipViaLines("uninstall", { name }, onProgress, start) as ReturnType<
         PipApi["uninstall"]
       >,
+    search: (query, options, onProgress) =>
+      pipViaLines(
+        "search",
+        { query, ...options },
+        onProgress,
+        start,
+      ) as ReturnType<PipApi["search"]>,
+    summaries: (names) =>
+      pipViaLines("summaries", { names }, () => {}, start) as ReturnType<
+        PipApi["summaries"]
+      >,
+    info: (name, version) =>
+      pipViaLines(
+        "info",
+        { name, version },
+        () => {},
+        start,
+      ) as Promise<PackageInfo>,
+    outdated: (names, onProgress) =>
+      pipViaLines("outdated", { names }, onProgress, start) as Promise<
+        UpdateCheck[]
+      >,
+    dependents: (name) =>
+      pipViaLines("dependents", { name }, () => {}, start) as ReturnType<
+        PipApi["dependents"]
+      >,
+    indexStatus: () =>
+      pipViaLines("index_status", {}, () => {}, start) as Promise<IndexStatus>,
+    refreshIndex: (onProgress) =>
+      pipViaLines(
+        "refresh_index",
+        {},
+        onProgress,
+        start,
+      ) as Promise<IndexStatus>,
   };
 }
 
@@ -174,7 +212,7 @@ export function cordovaRuntime(
     pip: makePip(
       (call, payload, onLine, onError) =>
         execStream("pip", [call, payload], onLine, onError),
-      () => void exec("pipCancel").catch(() => { }),
+      () => void exec("pipCancel").catch(() => {}),
     ),
 
     insets: () => exec<Insets>("insets").catch(() => null),
@@ -202,7 +240,7 @@ export async function readLines(
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  for (; ;) {
+  for (;;) {
     const { done, value } = await reader.read();
     if (value) buffer += decoder.decode(value, { stream: true });
     let nl: number;
@@ -256,7 +294,7 @@ export function devRuntime(base = ""): PyRuntime {
 
       const send = (path: string, body: unknown): void => {
         const go = (): void =>
-          void postJson(url(`/runs/${runId}/${path}`), body).catch(() => { });
+          void postJson(url(`/runs/${runId}/${path}`), body).catch(() => {});
         if (runId) go();
         else queued.push(go);
       };
@@ -281,7 +319,7 @@ export function devRuntime(base = ""): PyRuntime {
       let pipId: string | null = null;
       let cancelWanted = false;
       const sendCancel = (): void =>
-        void postJson(url(`/pip/${pipId}/cancel`), {}).catch(() => { });
+        void postJson(url(`/pip/${pipId}/cancel`), {}).catch(() => {});
       return makePip(
         (call, payload, onLine, onError) => {
           pipId = null;
@@ -323,19 +361,37 @@ export function noneRuntime(): PyRuntime {
       });
       return {
         done: Promise.resolve({ t: "exit", code: 1, ms: 0 }),
-        stdin() { },
-        gui() { },
+        stdin() {},
+        gui() {},
         stop: () => Promise.resolve(),
       };
     },
     imageUrl: () => Promise.reject(new Error(reason)),
     insets: () => Promise.resolve(null),
     pip: {
-      cancel() { },
+      cancel() {},
       list: () => Promise.resolve([]),
       lookup: async () => unavailable(),
       install: async () => unavailable(),
       uninstall: async () => unavailable(),
+      search: async () => unavailable(),
+      summaries: async () => ({}),
+      info: async () => unavailable(),
+      outdated: async () => [],
+      dependents: async (name) => ({
+        name,
+        dependents: [],
+        installed: null,
+        removable: false,
+      }),
+      indexStatus: async () => ({
+        available: false,
+        count: 0,
+        fetched: null,
+        ageDays: null,
+        lastUpdate: null,
+      }),
+      refreshIndex: async () => unavailable(),
     },
   };
 }

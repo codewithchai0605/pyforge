@@ -74,7 +74,7 @@ export function defaultClipboardBackend(): ClipboardBackend {
  */
 export function suppressSystemSelectionBar(on: boolean): void {
   if (!hasCordova()) return;
-  void exec("selectionBar", [on]).catch(() => { });
+  void exec("selectionBar", [on]).catch(() => {});
 }
 
 /**

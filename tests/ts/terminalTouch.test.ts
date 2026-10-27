@@ -31,7 +31,8 @@ async function make(text: string, extra: Record<string, unknown> = {}) {
   giveSize(view.el.firstElementChild!, 640, 384);
   view.fitNow();
   // The 80x24 grid occupies exactly this many pixels: 8x16 per cell.
-  const screen = view.term.element!.querySelector<HTMLElement>(".xterm-screen")!;
+  const screen =
+    view.term.element!.querySelector<HTMLElement>(".xterm-screen")!;
   giveSize(screen, 80 * CELL_W, 24 * CELL_H);
   view.write(text);
   await new Promise<void>((r) => view.write("", r));
@@ -44,12 +45,15 @@ async function make(text: string, extra: Record<string, unknown> = {}) {
     target.dispatchEvent(ev);
     return ev;
   };
-  const at = (col: number, row = 0) => [col * CELL_W + 2, row * CELL_H + 4] as const;
+  const at = (col: number, row = 0) =>
+    [col * CELL_W + 2, row * CELL_H + 4] as const;
   const bar = () => view.el.querySelector<HTMLElement>(".pf-sel-bar")!;
   const handle = (w: "start" | "end") =>
     view.el.querySelector<HTMLElement>(`.pf-handle-${w}`)!;
   const barLabels = () =>
-    [...bar().querySelectorAll("button")].map((b) => b.getAttribute("aria-label"));
+    [...bar().querySelectorAll("button")].map((b) =>
+      b.getAttribute("aria-label"),
+    );
   return { view, writes, taps, urls, touch, at, bar, handle, barLabels };
 }
 
@@ -108,8 +112,16 @@ test("a tap with nothing selected is reported to the owner and focuses the termi
   const t = await make("hello world");
   const ev0 = t.touch("touchstart", ...t.at(2));
   const ev1 = t.touch("touchend");
-  assert.equal(ev0.defaultPrevented, false, "starting a touch must not block scrolling");
-  assert.equal(ev1.defaultPrevented, true, "the tap must not be replayed as a mouse click");
+  assert.equal(
+    ev0.defaultPrevented,
+    false,
+    "starting a touch must not block scrolling",
+  );
+  assert.equal(
+    ev1.defaultPrevented,
+    true,
+    "the tap must not be replayed as a mouse click",
+  );
   assert.deepEqual(t.taps, [1]);
   assert.equal(document.activeElement, t.view.term.textarea);
 });
@@ -164,12 +176,19 @@ test("dragging the end handle moves the end of the selection; dragging past the 
   t.touch("touchend");
   assert.equal(t.view.getSelection(), "beta");
   const end = t.handle("end");
-  const down = new window.Event("pointerdown", { bubbles: true, cancelable: true });
+  const down = new window.Event("pointerdown", {
+    bubbles: true,
+    cancelable: true,
+  });
   Object.assign(down, { pointerId: 1 });
   end.dispatchEvent(down);
   const move = (col: number) => {
     const ev = new window.Event("pointermove", { bubbles: true });
-    Object.assign(ev, { pointerId: 1, clientX: col * CELL_W + 2, clientY: 4 + 22 });
+    Object.assign(ev, {
+      pointerId: 1,
+      clientX: col * CELL_W + 2,
+      clientY: 4 + 22,
+    });
     end.dispatchEvent(ev);
   };
   move(15); // "gamma" ends at column 15

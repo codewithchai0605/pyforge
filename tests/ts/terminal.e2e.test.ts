@@ -12,7 +12,10 @@ import path from "node:path";
 import type { AddressInfo } from "node:net";
 import { createBridge } from "../../utils/dev-bridge/bridge";
 import { devTerminalBackend } from "../../src/native/terminal";
-import type { TerminalBackend, TerminalSession } from "../../src/terminal/types";
+import type {
+  TerminalBackend,
+  TerminalSession,
+} from "../../src/terminal/types";
 
 let server: Server;
 let backend: TerminalBackend;
@@ -23,7 +26,8 @@ before(async () => {
   work = mkdtempSync(path.join(tmpdir(), "pyforge-term-"));
   const bridge = createBridge({ workDir: work });
   server = createServer(
-    (req, res) => void bridge(req, res).then((handled) => handled || res.end("no")),
+    (req, res) =>
+      void bridge(req, res).then((handled) => handled || res.end("no")),
   );
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   backend = devTerminalBackend(
@@ -39,7 +43,11 @@ after(() => {
 });
 
 function open(opts: { cols?: number; rows?: number; shell?: string } = {}) {
-  const session = backend.open({ cols: opts.cols ?? 80, rows: opts.rows ?? 24, shell: opts.shell ?? "/bin/bash" });
+  const session = backend.open({
+    cols: opts.cols ?? 80,
+    rows: opts.rows ?? 24,
+    shell: opts.shell ?? "/bin/bash",
+  });
   sessions.push(session);
   const decoder = new TextDecoder();
   let output = "";
@@ -50,7 +58,9 @@ function open(opts: { cols?: number; rows?: number; shell?: string } = {}) {
       if (re.test(output)) return output;
       await new Promise((r) => setTimeout(r, 25));
     }
-    throw new Error(`timed out waiting for ${re}; output so far: ${JSON.stringify(output.slice(-300))}`);
+    throw new Error(
+      `timed out waiting for ${re}; output so far: ${JSON.stringify(output.slice(-300))}`,
+    );
   };
   return { session, waitFor, output: () => output };
 }
@@ -59,7 +69,11 @@ test("a shell starts, runs a command and echoes what is typed", async () => {
   const t = open();
   t.session.write("echo pyforge-$((6*7))\n");
   const out = await t.waitFor(/pyforge-42/);
-  assert.match(out, /echo pyforge-\$\(\(6\*7\)\)/, "the PTY echoes the typed command");
+  assert.match(
+    out,
+    /echo pyforge-\$\(\(6\*7\)\)/,
+    "the PTY echoes the typed command",
+  );
 });
 
 test("it is a real terminal: stdout is a tty and TERM is set", async () => {
@@ -71,7 +85,7 @@ test("it is a real terminal: stdout is a tty and TERM is set", async () => {
 
 test("the shell starts in the workspace folder", async () => {
   const t = open();
-  t.session.write("basename \"$(pwd)\"\n");
+  t.session.write('basename "$(pwd)"\n');
   await t.waitFor(/\rprojects\r?\n/);
 });
 
@@ -106,7 +120,9 @@ test("exit reports the shell's status", async () => {
   t.session.write("exit 7\n");
   const exit = await Promise.race([
     t.session.done,
-    new Promise<never>((_, rej) => setTimeout(() => rej(new Error("no exit")), 8000)),
+    new Promise<never>((_, rej) =>
+      setTimeout(() => rej(new Error("no exit")), 8000),
+    ),
   ]);
   assert.equal(exit.code, 7);
   assert.equal(t.session.exited, true);
@@ -119,7 +135,9 @@ test("close() hangs up the shell", async () => {
   t.session.close();
   const exit = await Promise.race([
     t.session.done,
-    new Promise<never>((_, rej) => setTimeout(() => rej(new Error("still running")), 8000)),
+    new Promise<never>((_, rej) =>
+      setTimeout(() => rej(new Error("still running")), 8000),
+    ),
   ]);
   assert.equal(typeof exit.code, "number");
   assert.equal(t.session.exited, true);
@@ -138,7 +156,9 @@ test("a program that fails to start reports an exit instead of hanging", async (
   const t = open({ shell: "/definitely/not/a/shell" });
   const exit = await Promise.race([
     t.session.done,
-    new Promise<never>((_, rej) => setTimeout(() => rej(new Error("hung")), 8000)),
+    new Promise<never>((_, rej) =>
+      setTimeout(() => rej(new Error("hung")), 8000),
+    ),
   ]);
   assert.notEqual(exit.code, 0);
 });

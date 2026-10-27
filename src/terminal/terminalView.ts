@@ -6,7 +6,10 @@ import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { KeyModifiers } from "@/editor/modifiers";
-import { defaultClipboardBackend, type ClipboardBackend } from "@/native/device";
+import {
+  defaultClipboardBackend,
+  type ClipboardBackend,
+} from "@/native/device";
 import { applyModifiers } from "./keys";
 import {
   URL_RE,
@@ -120,7 +123,9 @@ export class TerminalView {
     this.term.loadAddon(new Unicode11Addon());
     this.term.unicode.activeVersion = "11";
     this.term.loadAddon(
-      new WebLinksAddon((_event, uri) => this.openUrl(uri), { urlRegex: URL_RE }),
+      new WebLinksAddon((_event, uri) => this.openUrl(uri), {
+        urlRegex: URL_RE,
+      }),
     );
     this.term.loadAddon(
       new ClipboardAddon(undefined, {
@@ -400,16 +405,28 @@ export class TerminalView {
       return false; // xterm must not also send it to the shell
     };
 
-    if (mod && e.shiftKey && key === "c") return handled(() => void this.copy(false));
-    if (mod && e.shiftKey && key === "v") return handled(() => void this.paste());
-    if (mod && e.shiftKey && key === "a") return handled(() => this.selectAll());
-    if (e.ctrlKey && !e.shiftKey && e.key === "Insert") return handled(() => void this.copy(false));
-    if (e.shiftKey && !e.ctrlKey && e.key === "Insert") return handled(() => void this.paste());
+    if (mod && e.shiftKey && key === "c")
+      return handled(() => void this.copy(false));
+    if (mod && e.shiftKey && key === "v")
+      return handled(() => void this.paste());
+    if (mod && e.shiftKey && key === "a")
+      return handled(() => this.selectAll());
+    if (e.ctrlKey && !e.shiftKey && e.key === "Insert")
+      return handled(() => void this.copy(false));
+    if (e.shiftKey && !e.ctrlKey && e.key === "Insert")
+      return handled(() => void this.paste());
     // Ctrl+C is "interrupt" for a shell, but with text selected it is almost
     // surely "copy" (as in VS Code's terminal). Cmd+C/V on a Mac keyboard.
-    if (!e.shiftKey && !e.altKey && key === "c" && mod && this.term.hasSelection())
+    if (
+      !e.shiftKey &&
+      !e.altKey &&
+      key === "c" &&
+      mod &&
+      this.term.hasSelection()
+    )
       return handled(() => void this.copy());
-    if (!e.shiftKey && !e.altKey && key === "v" && mod) return handled(() => void this.paste());
+    if (!e.shiftKey && !e.altKey && key === "v" && mod)
+      return handled(() => void this.paste());
     return true;
   }
 

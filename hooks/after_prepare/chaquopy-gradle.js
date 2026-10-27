@@ -30,13 +30,21 @@ module.exports = (context) => {
   );
   let text = fs.readFileSync(buildGradle, "utf8");
   if (!text.includes(ANDROID_PLUGIN) || !text.includes(REPOSITORIES)) {
-    throw new Error("Cordova's Android buildscript layout changed; cannot add Chaquopy safely.");
+    throw new Error(
+      "Cordova's Android buildscript layout changed; cannot add Chaquopy safely.",
+    );
   }
 
   // Repair the first version of this hook as well as adding the current form.
-  text = text.replace(`${REPOSITORIES}\n${OLD_CHAQUOPY_REPOSITORY}`, REPOSITORIES);
+  text = text.replace(
+    `${REPOSITORIES}\n${OLD_CHAQUOPY_REPOSITORY}`,
+    REPOSITORIES,
+  );
   if (!text.includes(CHAQUOPY_REPOSITORY)) {
-    text = text.replace(REPOSITORIES, `${REPOSITORIES}\n${CHAQUOPY_REPOSITORY}`);
+    text = text.replace(
+      REPOSITORIES,
+      `${REPOSITORIES}\n${CHAQUOPY_REPOSITORY}`,
+    );
   }
   if (!text.includes(CHAQUOPY)) {
     text = text.replace(ANDROID_PLUGIN, `${ANDROID_PLUGIN}\n${CHAQUOPY}`);

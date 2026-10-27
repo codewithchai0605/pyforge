@@ -73,11 +73,81 @@ export type LookupResult =
     };
 
 export interface PipProgress {
-  t: "log" | "dl";
+  /** "check" is the update check: `done` of `total` packages looked at, `file` is the one just finished. */
+  t: "log" | "dl" | "check";
   s?: string;
   file?: string;
   done?: number;
   total?: number;
+}
+
+/** What the local copy of the "most downloaded projects" list (the thing searches run against) looks like. */
+export interface IndexStatus {
+  available: boolean;
+  count: number;
+  /** Unix seconds when it was downloaded. */
+  fetched: number | null;
+  ageDays: number | null;
+  lastUpdate: string | null;
+}
+
+export type MatchKind =
+  "exact" | "prefix" | "word" | "substring" | "fuzzy" | "popular";
+
+export interface SearchHit {
+  name: string;
+  /** Canonical name (lower-case, "-" for "_" and "."). */
+  key: string;
+  /** Downloads in the last 30 days. */
+  downloads: number;
+  installed: string | null;
+  summary: string | null;
+  version: string | null;
+  match: MatchKind;
+}
+
+export interface SearchResult {
+  query: string;
+  total: number;
+  offset: number;
+  hits: SearchHit[];
+  index: IndexStatus;
+}
+
+export interface PackageLink {
+  label: string;
+  url: string;
+}
+
+export type PackageInfo =
+  | {
+      status: "ok";
+      name: string;
+      version: string;
+      /** Recent stable releases, newest first. */
+      versions: string[];
+      summary: string;
+      /** A readable excerpt of the README. */
+      description: string;
+      requiresPython: string | null;
+      license: string | null;
+      author: string | null;
+      links: PackageLink[];
+      /** Direct dependencies (canonical names; extras not included). */
+      requires: string[];
+      yanked: boolean;
+      installed: string | null;
+    }
+  | { status: "not_found"; name: string; message: string };
+
+export interface UpdateCheck {
+  name: string;
+  installed: string;
+  /** The newest version this device can load, or null if that could not be worked out. */
+  latest: string | null;
+  update: boolean;
+  note: string | null;
+  error: string | null;
 }
 
 export interface RunHandle {
@@ -111,6 +181,34 @@ export interface PipApi {
     name: string,
     onProgress: (p: PipProgress) => void,
   ): Promise<{ removed: string; files: number; dependents: string[] }>;
+  /** Search project names. An empty query lists the most downloaded. Downloads the name list the first time. */
+  search(
+    query: string,
+    options: { limit?: number; offset?: number },
+    onProgress: (p: PipProgress) => void,
+  ): Promise<SearchResult>;
+  /** One-line summaries for result rows (cached; names that couldn't be fetched are null). */
+  summaries(
+    names: string[],
+  ): Promise<
+    Record<string, { summary: string; version: string | null } | null>
+  >;
+  /** Details of a project, optionally of one specific release. */
+  info(name: string, version?: string): Promise<PackageInfo>;
+  /** Which installed packages have a newer version this device can load. `null` = all of them. */
+  outdated(
+    names: string[] | null,
+    onProgress: (p: PipProgress) => void,
+  ): Promise<UpdateCheck[]>;
+  /** Which installed packages need `name`. */
+  dependents(name: string): Promise<{
+    name: string;
+    dependents: string[];
+    installed: string | null;
+    removable: boolean;
+  }>;
+  indexStatus(): Promise<IndexStatus>;
+  refreshIndex(onProgress: (p: PipProgress) => void): Promise<IndexStatus>;
   /**
    * Stop the install/uninstall in progress. The pending promise rejects with a
    * PipError whose `cancelled` is true. Cancelling an install never leaves a

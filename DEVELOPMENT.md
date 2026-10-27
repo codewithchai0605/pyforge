@@ -175,6 +175,20 @@ started in the same command as the screenshot in a sandbox where background jobs
 - `cordova.exec`'d `PyRuntime` is also where native clipboard / selection-bar calls live
   (`src/native/device.ts`); every call has a browser fallback so the desktop preview keeps working.
 
+## Packages page (tabs, search, updates)
+
+- **Python** (`pkgmgr.py`, new section "search & package details"): `search` (local ranking over the cached top-15,000
+  list: exact > prefix > word > substring, popularity as tie-break, fuzzy fallback), `summaries`/`info` (release feed
+  ~1 KB, then the _per-version_ JSON ~4 KB; the full `/pypi/<name>/json` is up to 700 KB for boto3 or numpy and is only
+  a fallback), `outdated` (reuses `lookup`, so "latest" means latest _this device can load_), `dependents`,
+  `index_status`/`refresh_index`. Caches live in `<PYFORGE_CACHE>/index/`. Env overrides: `PYFORGE_TOP_URL`,
+  `PYFORGE_PYPI_JSON_URL`, `PYFORGE_PYPI_RSS_URL`. The Kotlin plugin and the dev bridge needed no change (generic pip call).
+- **TypeScript**: `src/pypi/model.ts` holds all logic and state (tested with a fake pip, `tests/ts/packagesModel.test.ts`);
+  `catalog.ts`, `requirements.ts`, `format.ts` are pure helpers; views are in `src/components/packages/`.
+- Verified here against the real PyPI and the real top-packages list through the dev bridge in WebKitGTK (search,
+  typo search, install, update check, details sheet). Not verified: on a device. In WebKit-based dev browsers the NDJSON
+  stream arrives in coarse batches (see Terminal), so summaries can appear late there.
+
 ## Terminal (tier 1: implemented)
 
 What exists, and how it is wired:

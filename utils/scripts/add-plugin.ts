@@ -4,7 +4,13 @@ import { spawn } from "node:child_process";
 
 const projectRoot = process.cwd();
 const pluginsRoot = path.join(projectRoot, "src", "native-plugins");
-const cordovaCli = path.join(projectRoot, "node_modules", "cordova", "bin", "cordova");
+const cordovaCli = path.join(
+  projectRoot,
+  "node_modules",
+  "cordova",
+  "bin",
+  "cordova",
+);
 
 interface LocalPlugin {
   id: string;
@@ -19,16 +25,20 @@ async function findLocalPlugins(): Promise<LocalPlugin[]> {
     if (!entry.isDirectory()) continue;
 
     const pluginPath = path.join(pluginsRoot, entry.name);
-    const pluginXml = await readFile(path.join(pluginPath, "plugin.xml"), "utf8")
-      .catch((error: NodeJS.ErrnoException) => {
-        if (error.code === "ENOENT") return null;
-        throw error;
-      });
+    const pluginXml = await readFile(
+      path.join(pluginPath, "plugin.xml"),
+      "utf8",
+    ).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return null;
+      throw error;
+    });
     if (pluginXml === null) continue;
 
     const id = pluginXml.match(/<plugin\b[^>]*\bid=["']([^"']+)["']/i)?.[1];
     if (!id) {
-      throw new Error(`Could not find a plugin id in ${path.join(pluginPath, "plugin.xml")}`);
+      throw new Error(
+        `Could not find a plugin id in ${path.join(pluginPath, "plugin.xml")}`,
+      );
     }
     plugins.push({ id, path: pluginPath });
   }
@@ -52,7 +62,12 @@ function runCordova(args: string[]): Promise<string> {
     child.on("error", reject);
     child.on("close", (code) => {
       if (code === 0) resolve(output);
-      else reject(new Error(`cordova ${args.join(" ")} exited with code ${code ?? "unknown"}`));
+      else
+        reject(
+          new Error(
+            `cordova ${args.join(" ")} exited with code ${code ?? "unknown"}`,
+          ),
+        );
     });
   });
 }
@@ -60,7 +75,9 @@ function runCordova(args: string[]): Promise<string> {
 async function addNativePlugins(): Promise<void> {
   const plugins = await findLocalPlugins();
   if (plugins.length === 0) {
-    console.log(`No local Cordova plugins found in ${path.relative(projectRoot, pluginsRoot)}.`);
+    console.log(
+      `No local Cordova plugins found in ${path.relative(projectRoot, pluginsRoot)}.`,
+    );
     return;
   }
 
@@ -77,7 +94,9 @@ async function addNativePlugins(): Promise<void> {
       console.log(`Already installed: ${plugin.id}`);
       continue;
     }
-    console.log(`Adding ${plugin.id} from ${path.relative(projectRoot, plugin.path)}...`);
+    console.log(
+      `Adding ${plugin.id} from ${path.relative(projectRoot, plugin.path)}...`,
+    );
     await runCordova(["plugin", "add", plugin.path]);
   }
 }

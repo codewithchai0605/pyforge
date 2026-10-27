@@ -124,6 +124,17 @@ your own shell. Long-press selects text, drag the handles, then Copy / Paste / S
 DEVELOPMENT.md, "Terminal". **The Android part (NDK build, PTY under Android, touch gestures, soft keyboard) has
 not been run on a device.**
 
+## Packages
+
+**Menu -> Packages** has three tabs. **Install**: type a name (`rich==13.7.1` works), paste a requirements list or
+use the workspace's `requirements.txt`, or pick from a hand-picked catalogue by category. **Search**: finds projects by
+name or by what they do ("http", "excel"), tolerates typos, shows downloads and a one-line description, and opens a
+details sheet (whether this phone can run it and which release, license, dependencies, links) _before_ anything is
+installed. **Installed**: filter, check for updates and update one or all, see what needs a package before removing
+it, export `requirements.txt` (copy or save to the workspace). PyPI's own search page is behind a bot challenge and
+its search API is gone, so search runs against a locally cached list of the 15,000 most downloaded projects (about
+0.2 MB, downloaded on the first search, refreshed weekly), plus an exact lookup for any name typed in full.
+
 ## Honest status: what is and isn't verified
 
 Everything below was built and tested in a Linux sandbox **without an Android SDK, device

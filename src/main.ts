@@ -349,7 +349,7 @@ async function start(): Promise<void> {
   });
 
   const pages: Node[] = [
-    PackagesPage({ router, runtime, info }),
+    PackagesPage({ router, runtime, info, workspaceUrl: workspace.rootUrl }),
     createTerminalPage({ router, manager: terminals, settings }),
     SettingsPage({ router, settings, info }),
   ];

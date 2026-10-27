@@ -62,8 +62,14 @@ export function installXtermDom(): Window & typeof globalThis {
 
 /** Makes `el` report a size (jsdom reports 0 for everything). */
 export function giveSize(el: Element, width: number, height: number): void {
-  Object.defineProperty(el, "clientWidth", { value: width, configurable: true });
-  Object.defineProperty(el, "clientHeight", { value: height, configurable: true });
+  Object.defineProperty(el, "clientWidth", {
+    value: width,
+    configurable: true,
+  });
+  Object.defineProperty(el, "clientHeight", {
+    value: height,
+    configurable: true,
+  });
   (el as HTMLElement).getBoundingClientRect = () =>
     ({
       x: 0,

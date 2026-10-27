@@ -16,7 +16,9 @@ from . import bootstrap, core, runner
 _thread: Optional[threading.Thread] = None
 
 
-def configure(home: str, site: str, projects: str, cache: str, abi: str = "", api: str = "") -> None:
+def configure(
+    home: str, site: str, projects: str, cache: str, abi: str = "", api: str = ""
+) -> None:
     bootstrap.configure(home, site, projects, cache, abi, api)
 
 
@@ -48,7 +50,9 @@ def start_run(sink: Any, req_json: str) -> None:
     # binder thread (daemon). Threads the user's script starts would then be
     # daemonic too, and a script like `Thread(target=...).start()` would exit
     # without waiting for them, unlike under plain `python script.py`.
-    thread = threading.Thread(target=runner.run, args=(session, req), name="pyforge-main", daemon=False)
+    thread = threading.Thread(
+        target=runner.run, args=(session, req), name="pyforge-main", daemon=False
+    )
     thread.start()
     # Published only once started: the desktop host waits on `_thread` from
     # another thread and join()ing a not-yet-started thread raises.
@@ -96,6 +100,25 @@ def pip_call(sink: Any, call: str, args_json: str) -> str:
             result = pkgmgr.install(args["specs"], progress)
         elif call == "uninstall":
             result = pkgmgr.uninstall(args["name"], progress)
+        elif call == "search":
+            result = pkgmgr.search(
+                args.get("query", ""),
+                int(args.get("limit", 30)),
+                int(args.get("offset", 0)),
+                progress,
+            )
+        elif call == "summaries":
+            result = pkgmgr.summaries(list(args["names"]), progress)
+        elif call == "info":
+            result = pkgmgr.info(args["name"], args.get("version"), progress)
+        elif call == "outdated":
+            result = pkgmgr.outdated(args.get("names"), progress)
+        elif call == "dependents":
+            result = pkgmgr.dependents(args["name"])
+        elif call == "index_status":
+            result = pkgmgr.index_status()
+        elif call == "refresh_index":
+            result = pkgmgr.refresh_index(progress)
         else:
             raise ValueError(f"unknown pip call: {call}")
         return json.dumps({"ok": True, "result": result})

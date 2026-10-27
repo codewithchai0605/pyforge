@@ -109,7 +109,9 @@ export function createBridge(
   /** A shell's start folder: the app sends the workspace's absolute path; anything outside it falls back to the workspace. */
   const termCwd = (dir: string): string => {
     const abs = path.resolve(dir);
-    return path.isAbsolute(dir) && insideDir(dirs.projects, abs) ? abs : inProjects(dir);
+    return path.isAbsolute(dir) && insideDir(dirs.projects, abs)
+      ? abs
+      : inProjects(dir);
   };
 
   const json = (res: ServerResponse, code: number, body: unknown): void => {
@@ -174,7 +176,7 @@ export function createBridge(
         child.stderr.on("data", (d: Buffer) =>
           process.stderr.write(`[py host] ${d}`),
         );
-        child.stdin.on("error", () => { });
+        child.stdin.on("error", () => {});
         // nosniff: without it WebKit buffers an open streaming response while it
         // sniffs the type, so live output wouldn't appear until the program ended.
         res.writeHead(200, {
@@ -205,14 +207,16 @@ export function createBridge(
           "--rows",
           String(Math.max(1, Math.floor(body.rows ?? 24))),
           "--cwd",
-          typeof body.cwd === "string" && body.cwd ? termCwd(body.cwd) : dirs.projects,
+          typeof body.cwd === "string" && body.cwd
+            ? termCwd(body.cwd)
+            : dirs.projects,
         ];
         if (typeof body.shell === "string" && body.shell)
           args.push("--shell", body.shell);
         const child = spawn(python, args, { env, cwd: work });
         terms.set(id, child);
         child.on("close", () => terms.delete(id));
-        child.stdin.on("error", () => { });
+        child.stdin.on("error", () => {});
         child.stderr.on("data", (d: Buffer) =>
           process.stderr.write(`[pty host] ${d}`),
         );
@@ -230,7 +234,8 @@ export function createBridge(
       const tm = /^\/term\/([^/]+)\/(in|resize|close)$/.exec(route);
       if (req.method === "POST" && tm) {
         const child = terms.get(tm[1]!);
-        if (!child) return (json(res, 404, { error: "no such terminal" }), true);
+        if (!child)
+          return (json(res, 404, { error: "no such terminal" }), true);
         const payload = JSON.parse((await readBody(req)) || "{}") as Record<
           string,
           unknown
@@ -267,7 +272,7 @@ export function createBridge(
         );
         pips.set(id, child);
         child.on("close", () => pips.delete(id));
-        child.stdin.on("error", () => { });
+        child.stdin.on("error", () => {});
         child.stderr.on("data", (d: Buffer) =>
           process.stderr.write(`[py pip] ${d}`),
         );

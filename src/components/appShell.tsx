@@ -66,12 +66,12 @@ function RailButton({
 
 /** While `open` is true, Android's Back button should close it (see backStack.ts). */
 function closeOnBack(open: Signal<boolean>): void {
-  let release = (): void => { };
+  let release = (): void => {};
   watch(
     () => open(),
     (isOpen) => {
       release();
-      release = isOpen ? pushBack(() => open.set(false)) : (): void => { };
+      release = isOpen ? pushBack(() => open.set(false)) : (): void => {};
     },
     { defer: true },
   );
