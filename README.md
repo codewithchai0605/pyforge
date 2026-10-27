@@ -25,6 +25,21 @@ run it on a real embedded CPython, see output / `input()` / **turtle graphics** 
 
 ## Build the Android app
 
+### Updating an installed app from GitHub Actions
+
+The APK must keep the same application ID (`com.pyforge.app`) and signing key
+for Android to install it as an update. Set the repository Actions secret
+`DEBUG_KEYSTORE_BASE64` to the Base64 encoding of the exact keystore used for
+the installed app. The build workflow now stops if this secret is missing or
+does not contain the expected Android debug key, instead of silently creating
+an APK that cannot update the existing install.
+
+If the phone already has an APK signed with a different key (for example, a CI
+build made before the secret was configured), Android cannot replace it. Back
+up any app data, uninstall that one existing install, then install a new APK
+from Actions. Later builds signed with the saved keystore can be installed as
+updates.
+
 You need (versions as tested against cordova-android 15):
 
 | Tool                                 | Notes                                                                                                                                                 |

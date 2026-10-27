@@ -72,21 +72,20 @@ jobs:
           mkdir -p ~/.gradle
           echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
 
-      # Optional: sign with a stable debug key so each new APK can update the
-      # previous one. Without the secret, every CI run gets a fresh random debug
-      # key and Android refuses to install over an older build (uninstall first).
-      # See the note below the workflow for how to create the secret.
-      - name: Restore debug keystore (optional)
+      # Always use the same key: Android only allows an update when the APK
+      # signer matches the app already installed on the device.
+      - name: Restore stable debug keystore
         env:
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: |
-          if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
-            mkdir -p ~/.android
-            echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
-            echo "Using the debug keystore from the DEBUG_KEYSTORE_BASE64 secret."
-          else
-            echo "No DEBUG_KEYSTORE_BASE64 secret set: using a throwaway debug key."
+          if [ -z "$DEBUG_KEYSTORE_BASE64" ]; then
+            echo "ERROR: Set the DEBUG_KEYSTORE_BASE64 Actions secret to the keystore used to sign the installed app." >&2
+            exit 1
           fi
+          mkdir -p ~/.android
+          printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 --decode > ~/.android/debug.keystore
+          keytool -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey >/dev/null
+          echo "Stable debug keystore restored and verified."
 
       - name: Install JS dependencies
         run: bun install --frozen-lockfile
@@ -155,13 +154,13 @@ jobs:
           fi
 
 # ---------------------------------------------------------------------------
-# Optional stable debug key (one-time setup)
+# Stable debug key (one-time setup)
 #
 #   keytool -genkeypair -v -keystore debug.keystore -storepass android \
 #     -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 \
 #     -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 #   base64 -w0 debug.keystore      # macOS: base64 -i debug.keystore
 #
-# Paste the output into Settings -> Secrets and variables -> Actions ->
+# Set the output as Settings -> Secrets and variables -> Actions ->
 # New repository secret, named DEBUG_KEYSTORE_BASE64. Never commit the keystore.
 # ---------------------------------------------------------------------------
