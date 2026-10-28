@@ -108,30 +108,24 @@ jobs:
       - name: Add Cordova platform and plugins
         run: bun run cordova:plugins && bun run cordova prepare android
 
-      # Cordova detects this file and configures the Gradle release signing
-      # config. It is created only after prepare because platforms/ is generated.
-      - name: Configure release signing
-        env:
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD || 'android' }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS || 'androiddebugkey' }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD || 'android' }}
-        run: |
-          umask 077
-          {
-            echo "storeFile=$GITHUB_WORKSPACE/.ci/release.keystore"
-            echo "storePassword=$RELEASE_KEYSTORE_PASSWORD"
-            echo "keyAlias=$RELEASE_KEY_ALIAS"
-            echo "keyPassword=$RELEASE_KEY_PASSWORD"
-          } > platforms/android/release-signing.properties
-
       # config.xml is the source of truth for versionCode. Increase its
       # android-versionCode for every release so Android accepts the update.
       - name: Build signed release APK
         env:
           PYFORGE_BUILD_PYTHON: ${{ steps.py.outputs.python-path }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD || 'android' }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS || 'androiddebugkey' }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD || 'android' }}
         # cordova-android 15 defaults release builds to AAB. Request APK
-        # explicitly because this workflow publishes an installable APK.
-        run: bun run cordova build android --release -- --packageType=apk
+        # explicitly because this workflow publishes an installable APK. The
+        # signing flags let Cordova create its signing config during preparation.
+        run: |
+          bun run cordova build android --release -- \
+            --packageType=apk \
+            --keystore="$GITHUB_WORKSPACE/.ci/release.keystore" \
+            --storePassword="$RELEASE_KEYSTORE_PASSWORD" \
+            --alias="$RELEASE_KEY_ALIAS" \
+            --password="$RELEASE_KEY_PASSWORD"
 
       - name: Verify release APK
         run: |
