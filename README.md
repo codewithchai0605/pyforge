@@ -25,21 +25,6 @@ run it on a real embedded CPython, see output / `input()` / **turtle graphics** 
 
 ## Build the Android app
 
-### Updating an installed app from GitHub Actions
-
-The APK must keep the same application ID (`com.pyforge.app`) and signing key
-for Android to install it as an update. Set the repository Actions secret
-`DEBUG_KEYSTORE_BASE64` to the Base64 encoding of the exact keystore used for
-the installed app. The build workflow now stops if this secret is missing or
-does not contain the expected Android debug key, instead of silently creating
-an APK that cannot update the existing install.
-
-If the phone already has an APK signed with a different key (for example, a CI
-build made before the secret was configured), Android cannot replace it. Back
-up any app data, uninstall that one existing install, then install a new APK
-from Actions. Later builds signed with the saved keystore can be installed as
-updates.
-
 You need (versions as tested against cordova-android 15):
 
 | Tool                                 | Notes                                                                                                                                                 |
@@ -135,7 +120,7 @@ otherwise). `PYFORGE_PYTHON` selects the interpreter for the TS tests.
 **Menu -> Terminal** opens a real shell (tabs, search, Copy/Paste, sticky Ctrl/Alt key bar) and program output
 is shown in the same xterm.js terminal (**Settings -> Terminal-style console**; turn it off for the classic
 console). On the phone the shell is Android's own `sh` (no Python in it); on your computer (`npm run dev`) it is
-your own shell. Long-press selects text, drag the handles, then Copy / Paste / Select all. Details and limits:
+your own shell. Long-press selects text, drag the handles, then Copy / Paste / Select all. Pinch with two fingers to change the text size, tap the round arrow to jump back to the latest output after scrolling up, and use the menu's "Copy all output" and "Rename shell" (or double-tap a tab). The run console has a Copy output button too. Details and limits:
 DEVELOPMENT.md, "Terminal". **The Android part (NDK build, PTY under Android, touch gestures, soft keyboard) has
 not been run on a device.**
 
@@ -144,7 +129,7 @@ not been run on a device.**
 **Menu -> Packages** has three tabs. **Install**: type a name (`rich==13.7.1` works), paste a requirements list or
 use the workspace's `requirements.txt`, or pick from a hand-picked catalogue by category. **Search**: finds projects by
 name or by what they do ("http", "excel"), tolerates typos, shows downloads and a one-line description, and opens a
-details sheet (whether this phone can run it and which release, license, dependencies, links) _before_ anything is
+details sheet (whether this phone can run it and which release, license, dependencies, links) *before* anything is
 installed. **Installed**: filter, check for updates and update one or all, see what needs a package before removing
 it, export `requirements.txt` (copy or save to the workspace). PyPI's own search page is behind a bot challenge and
 its search API is gone, so search runs against a locally cached list of the 15,000 most downloaded projects (about

@@ -1,7 +1,10 @@
 import { signal, type Signal } from "xtags";
 import type { Settings } from "@/settings";
 import { TerminalView } from "./terminalView";
-import type { TerminalBackend, TerminalSession } from "./types";
+import type {
+  TerminalBackend,
+  TerminalSession,
+} from "./types";
 
 /**
  * The open shells. They live here, not in the Terminal page, so leaving the
@@ -54,8 +57,10 @@ export class TerminalManager {
   readonly active = signal<ShellTab | null>(null);
   private nextId = 1;
   private readonly live = new Map<number, Live>();
+  /** Tabs the user has named: the shell's own window title (OSC 0/2) no longer overrides them. */
+  private readonly renamed = new Set<number>();
 
-  constructor(private readonly o: TerminalManagerOptions) {}
+  constructor(private readonly o: TerminalManagerOptions) { }
 
   get backend(): TerminalBackend {
     return this.o.backend;
@@ -74,6 +79,7 @@ export class TerminalManager {
       scrollback: 10000,
       convertEol: false, // a PTY already sends CR LF
       webgl: this.o.settings.terminalWebgl.peek(),
+      onFontSize: (size) => this.o.settings.terminalFontSize.set(size),
       notify: this.o.notify,
       openUrl: this.o.openUrl,
       onTraceback: this.o.onTraceback,
@@ -86,13 +92,13 @@ export class TerminalManager {
       view,
     };
     view.onTitle((t) => {
+      if (this.renamed.has(id)) return;
       const clean = t.trim();
       tab.title.set(clean ? clean.slice(0, 40) : `Shell ${id}`);
     });
     // Enter after the shell has ended starts a new one.
     view.onData((data) => {
-      if (tab.status.peek() === "exited" && /^[\r\n]/.test(data))
-        this.restart(tab);
+      if (tab.status.peek() === "exited" && /^[\r\n]/.test(data)) this.restart(tab);
     });
     this.tabs.update((all) => [...all, tab]);
     this.active.set(tab);
@@ -100,6 +106,21 @@ export class TerminalManager {
     // reads its size at startup and some programs never ask again.
     void view.whenReady().then(({ cols, rows }) => this.start(tab, cols, rows));
     return tab;
+  }
+
+  /**
+   * Gives a tab a name of the user's choosing. Naming it "Shell N" (its own
+   * default) or clearing the name gives control of the title back to the shell.
+   */
+  rename(tab: ShellTab, title: string | null): void {
+    const name = (title ?? "").trim().slice(0, 40);
+    if (name && name !== `Shell ${tab.id}`) {
+      this.renamed.add(tab.id);
+      tab.title.set(name);
+    } else {
+      this.renamed.delete(tab.id);
+      tab.title.set(`Shell ${tab.id}`);
+    }
   }
 
   select(id: number): void {
@@ -116,12 +137,12 @@ export class TerminalManager {
     const index = all.findIndex((t) => t.id === id);
     if (index < 0) return;
     const tab = all[index]!;
+    this.renamed.delete(id);
     this.stop(tab);
     tab.view.dispose();
     const rest = all.filter((t) => t.id !== id);
     this.tabs.set(rest);
-    if (this.active.peek() === tab)
-      this.active.set(rest[Math.min(index, rest.length - 1)] ?? null);
+    if (this.active.peek() === tab) this.active.set(rest[Math.min(index, rest.length - 1)] ?? null);
     if (rest.length === 0 && this.o.backend.available) this.create();
   }
 
@@ -131,9 +152,7 @@ export class TerminalManager {
     tab.view.write("\x1bc");
     tab.status.set("starting");
     tab.exitCode.set(null);
-    void tab.view
-      .whenReady()
-      .then(() => this.start(tab, tab.view.cols, tab.view.rows));
+    void tab.view.whenReady().then(() => this.start(tab, tab.view.cols, tab.view.rows));
   }
 
   closeAll(): void {

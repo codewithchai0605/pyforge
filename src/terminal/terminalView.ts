@@ -5,11 +5,10 @@ import { SearchAddon } from "@xterm/addon-search";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
+import { copyOutput } from "@/components/copyOutput";
+import { icon } from "@/components/icons";
 import { KeyModifiers } from "@/editor/modifiers";
-import {
-  defaultClipboardBackend,
-  type ClipboardBackend,
-} from "@/native/device";
+import { defaultClipboardBackend, type ClipboardBackend } from "@/native/device";
 import { applyModifiers } from "./keys";
 import {
   URL_RE,
@@ -61,9 +60,15 @@ export interface TerminalViewOptions {
   onTraceback?: (path: string, line: number) => void;
   /** Called on a tap that did not hit a link (the owner decides about the keyboard). */
   onTap?: () => void;
+  /** A pinch changed the text size: persist it (the view has already applied it). */
+  onFontSize?: (size: number) => void;
   /** Line height multiplier. */
   lineHeight?: number;
 }
+
+/** The range Settings allows for the terminal text size. */
+export const FONT_MIN = 8;
+export const FONT_MAX = 24;
 
 const FONT_FAMILY =
   '"JetBrains Mono", "Roboto Mono", "Cascadia Mono", "Noto Sans Mono", Menlo, Consolas, monospace';
@@ -76,6 +81,8 @@ export class TerminalView {
   readonly modifiers = new KeyModifiers();
 
   private readonly host: HTMLElement;
+  /** Appears while the view is scrolled up into the scrollback; one tap returns to the latest output. */
+  private readonly toBottom: HTMLButtonElement;
   private readonly fit = new FitAddon();
   private readonly clipboard: ClipboardBackend;
   private touch: TouchSelection | null = null;
@@ -103,6 +110,21 @@ export class TerminalView {
     this.el.className = "pf-term";
     this.el.append(this.host);
 
+    this.toBottom = document.createElement("button");
+    this.toBottom.type = "button";
+    this.toBottom.className = "pf-term-bottom";
+    this.toBottom.hidden = true;
+    this.toBottom.title = "Scroll to bottom";
+    this.toBottom.setAttribute("aria-label", "Scroll to bottom");
+    this.toBottom.append(icon("chevronDown", 22));
+    // Never take focus from the terminal: that would hide the keyboard.
+    this.toBottom.addEventListener("pointerdown", (e) => e.preventDefault());
+    this.toBottom.addEventListener("click", () => {
+      this.term.scrollToBottom();
+      this.updateToBottom();
+    });
+    this.el.append(this.toBottom);
+
     this.term = new Terminal({
       allowProposedApi: true, // unicode11 and search decorations
       fontFamily: FONT_FAMILY,
@@ -123,9 +145,7 @@ export class TerminalView {
     this.term.loadAddon(new Unicode11Addon());
     this.term.unicode.activeVersion = "11";
     this.term.loadAddon(
-      new WebLinksAddon((_event, uri) => this.openUrl(uri), {
-        urlRegex: URL_RE,
-      }),
+      new WebLinksAddon((_event, uri) => this.openUrl(uri), { urlRegex: URL_RE }),
     );
     this.term.loadAddon(
       new ClipboardAddon(undefined, {
@@ -147,6 +167,10 @@ export class TerminalView {
       for (const cb of this.dataListeners) cb(out);
     });
     this.term.attachCustomKeyEventHandler((e) => this.handleKey(e));
+    // New output while scrolled up must not drag the view down, but it should
+    // keep the button visible; scrolling by hand shows and hides it.
+    this.term.onScroll(() => this.updateToBottom());
+    this.term.onWriteParsed(() => this.updateToBottom());
 
     // The element must have a size before xterm can measure its font.
     if (typeof ResizeObserver === "function") {
@@ -154,6 +178,11 @@ export class TerminalView {
       this.resizeObserver.observe(this.host);
     }
     this.scheduleFit();
+  }
+
+  private updateToBottom(): void {
+    const b = this.term.buffer.active;
+    this.toBottom.hidden = b.viewportY >= b.baseY;
   }
 
   // --------------------------------------------------------- lifecycle
@@ -185,6 +214,15 @@ export class TerminalView {
           selectAll: () => this.selectAll(),
         },
         onTap: (cell) => this.tap(cell),
+        zoom: {
+          get: () => this.term.options.fontSize ?? this.opts.fontSize,
+          set: (size) => {
+            this.setFontSize(size);
+            this.opts.onFontSize?.(size);
+          },
+          min: FONT_MIN,
+          max: FONT_MAX,
+        },
       });
     }
   }
@@ -374,6 +412,11 @@ export class TerminalView {
     return true;
   }
 
+  /** Copies everything the terminal has shown, scrollback included. */
+  copyAll(): Promise<boolean> {
+    return copyOutput(this.text(), this.clipboard, (m, k) => this.notify(m, k));
+  }
+
   /** Pastes the clipboard as typed input (bracketed if the program asked for it, newlines as Enter). */
   async paste(): Promise<boolean> {
     let text: string;
@@ -405,28 +448,16 @@ export class TerminalView {
       return false; // xterm must not also send it to the shell
     };
 
-    if (mod && e.shiftKey && key === "c")
-      return handled(() => void this.copy(false));
-    if (mod && e.shiftKey && key === "v")
-      return handled(() => void this.paste());
-    if (mod && e.shiftKey && key === "a")
-      return handled(() => this.selectAll());
-    if (e.ctrlKey && !e.shiftKey && e.key === "Insert")
-      return handled(() => void this.copy(false));
-    if (e.shiftKey && !e.ctrlKey && e.key === "Insert")
-      return handled(() => void this.paste());
+    if (mod && e.shiftKey && key === "c") return handled(() => void this.copy(false));
+    if (mod && e.shiftKey && key === "v") return handled(() => void this.paste());
+    if (mod && e.shiftKey && key === "a") return handled(() => this.selectAll());
+    if (e.ctrlKey && !e.shiftKey && e.key === "Insert") return handled(() => void this.copy(false));
+    if (e.shiftKey && !e.ctrlKey && e.key === "Insert") return handled(() => void this.paste());
     // Ctrl+C is "interrupt" for a shell, but with text selected it is almost
     // surely "copy" (as in VS Code's terminal). Cmd+C/V on a Mac keyboard.
-    if (
-      !e.shiftKey &&
-      !e.altKey &&
-      key === "c" &&
-      mod &&
-      this.term.hasSelection()
-    )
+    if (!e.shiftKey && !e.altKey && key === "c" && mod && this.term.hasSelection())
       return handled(() => void this.copy());
-    if (!e.shiftKey && !e.altKey && key === "v" && mod)
-      return handled(() => void this.paste());
+    if (!e.shiftKey && !e.altKey && key === "v" && mod) return handled(() => void this.paste());
     return true;
   }
 

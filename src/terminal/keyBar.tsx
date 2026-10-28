@@ -41,12 +41,7 @@ export function createKeyBar(o: KeyBarOptions): HTMLElement {
     o.send(encodeKey(key, held, o.applicationCursor?.() ?? false));
   };
 
-  const text = (
-    label: string,
-    title: string,
-    onClick: () => void,
-    wide = false,
-  ): HTMLElement =>
+  const text = (label: string, title: string, onClick: () => void, wide = false): HTMLElement =>
     (
       <button
         type="button"
@@ -60,11 +55,7 @@ export function createKeyBar(o: KeyBarOptions): HTMLElement {
       </button>
     ) as HTMLElement;
 
-  const glyph = (
-    name: IconName,
-    title: string,
-    onClick: () => void,
-  ): HTMLElement =>
+  const glyph = (name: IconName, title: string, onClick: () => void): HTMLElement =>
     (
       <button
         type="button"
@@ -78,11 +69,7 @@ export function createKeyBar(o: KeyBarOptions): HTMLElement {
       </button>
     ) as HTMLElement;
 
-  const toggle = (
-    label: string,
-    name: ModifierName,
-    title: string,
-  ): HTMLElement => {
+  const toggle = (label: string, name: ModifierName, title: string): HTMLElement => {
     const state = o.modifiers.state(name);
     return (
       <button
@@ -115,38 +102,37 @@ export function createKeyBar(o: KeyBarOptions): HTMLElement {
   const keys: HTMLElement[] =
     o.layout === "console"
       ? [
-          text("^C", "Stop the program (Ctrl+C)", () => o.send("\x03"), true),
-          text("^D", "End of input (Ctrl+D)", () => o.send("\x04"), true),
-          ...arrows,
-          text("Home", "Home", () => sendKey("Home"), true),
-          text("End", "End", () => sendKey("End"), true),
-          text("Tab", "Tab", () => sendKey("Tab"), true),
-          ...paste,
-        ]
+        text("^C", "Stop the program (Ctrl+C)", () => o.send("\x03"), true),
+        text("^D", "End of input (Ctrl+D)", () => o.send("\x04"), true),
+        ...arrows,
+        text("Home", "Home", () => sendKey("Home"), true),
+        text("End", "End", () => sendKey("End"), true),
+        text("Tab", "Tab", () => sendKey("Tab"), true),
+        ...paste,
+      ]
       : [
-          text("Esc", "Escape", () => sendKey("Escape"), true),
-          text("Tab", "Tab", () => sendKey("Tab"), true),
-          toggle("CTRL", "ctrl", "Control (tap: next key; double-tap: lock)"),
-          toggle("ALT", "alt", "Alt (tap: next key; double-tap: lock)"),
-          ...arrows,
-          text("Home", "Home", () => sendKey("Home"), true),
-          text("End", "End", () => sendKey("End"), true),
-          text("PgUp", "Page up", () => sendKey("PageUp"), true),
-          text("PgDn", "Page down", () => sendKey("PageDown"), true),
-          ...["|", "/", "-", "~", "_", "$", "&", ":", '"', "'", "\\"].map((c) =>
-            text(c, c, () => {
-              o.send(c);
-            }),
-          ),
-          ...paste,
-        ];
+        text("Esc", "Escape", () => sendKey("Escape"), true),
+        text("Tab", "Tab", () => sendKey("Tab"), true),
+        toggle("CTRL", "ctrl", "Control (tap: next key; double-tap: lock)"),
+        toggle("ALT", "alt", "Alt (tap: next key; double-tap: lock)"),
+        // One tap instead of CTRL then C: the key you reach for most often in a shell.
+        text("^C", "Interrupt the running command (Ctrl+C)", () => o.send("\x03"), true),
+        text("^D", "End of input / log out (Ctrl+D)", () => o.send("\x04"), true),
+        ...arrows,
+        text("Home", "Home", () => sendKey("Home"), true),
+        text("End", "End", () => sendKey("End"), true),
+        text("PgUp", "Page up", () => sendKey("PageUp"), true),
+        text("PgDn", "Page down", () => sendKey("PageDown"), true),
+        ...["|", "/", "-", "~", "_", "$", "&", ":", '"', "'", "\\"].map((c) =>
+          text(c, c, () => {
+            o.send(c);
+          }),
+        ),
+        ...paste,
+      ];
 
   return (
-    <div
-      class={`term-keys term-keys-${o.layout}`}
-      role="toolbar"
-      aria-label="Terminal keys"
-    >
+    <div class={`term-keys term-keys-${o.layout}`} role="toolbar" aria-label="Terminal keys">
       <div class="qt-row">{keys}</div>
     </div>
   ) as HTMLElement;

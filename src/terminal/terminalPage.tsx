@@ -1,10 +1,12 @@
 import { For, computed, signal, watch } from "xtags";
 import { pushBack } from "@/components/backStack";
+import { promptDialog } from "@/components/dialogs";
 import { icon, type IconName } from "@/components/icons";
 import { Page } from "@/components/page";
 import type { Router } from "@/navigation";
 import type { Settings } from "@/settings";
 import { createKeyBar } from "./keyBar";
+import { FONT_MAX, FONT_MIN } from "./terminalView";
 import type { ShellTab, TerminalManager } from "./sessions";
 
 /**
@@ -26,8 +28,6 @@ export interface TerminalPageOptions {
   settings: Settings;
 }
 
-const FONT_MIN = 8;
-const FONT_MAX = 24;
 
 const SEARCH_DECORATIONS = {
   matchBackground: "#5a4a1a",
@@ -50,12 +50,12 @@ export function createTerminalPage(o: TerminalPageOptions): Node {
 
   // Android's Back closes the menu / search before it leaves the page.
   for (const open of [menuOpen, searchOpen]) {
-    let release = (): void => {};
+    let release = (): void => { };
     watch(
       () => open(),
       (isOpen) => {
         release();
-        release = isOpen ? pushBack(() => open.set(false)) : (): void => {};
+        release = isOpen ? pushBack(() => open.set(false)) : (): void => { };
       },
       { defer: true },
     );
@@ -146,21 +146,24 @@ export function createTerminalPage(o: TerminalPageOptions): Node {
     if (view) run(view);
   };
 
+  const rename = async (tab: ShellTab): Promise<void> => {
+    const name = await promptDialog({
+      title: "Rename shell",
+      value: tab.title.peek(),
+      placeholder: `Shell ${tab.id}`,
+      confirmLabel: "Rename",
+    });
+    if (name !== null) manager.rename(tab, name);
+  };
+
   const resize = (delta: number) =>
     withActive(() =>
       settings.terminalFontSize.set(
-        Math.min(
-          FONT_MAX,
-          Math.max(FONT_MIN, settings.terminalFontSize.peek() + delta),
-        ),
+        Math.min(FONT_MAX, Math.max(FONT_MIN, settings.terminalFontSize.peek() + delta)),
       ),
     );
 
-  const MenuItem = (
-    label: string,
-    name: IconName,
-    action: () => void,
-  ): HTMLElement =>
+  const MenuItem = (label: string, name: IconName, action: () => void): HTMLElement =>
     (
       <button type="button" class="menu-item" role="menuitem" onClick={action}>
         {icon(name, 20)}
@@ -173,23 +176,20 @@ export function createTerminalPage(o: TerminalPageOptions): Node {
       class={computed(() => ({ "term-menu": true, open: menuOpen() }))}
       role="menu"
     >
-      {MenuItem(
-        "Copy",
-        "copy",
-        withActive((v) => void v.copy()),
-      )}
-      {MenuItem(
-        "Select all",
-        "selectAll",
-        withActive((v) => v.selectAll()),
-      )}
-      {MenuItem(
-        "Clear screen",
-        "clear",
-        withActive((v) => v.clear()),
-      )}
+      {MenuItem("Copy", "copy", withActive((v) => void v.copy()))}
+      {MenuItem("Select all", "selectAll", withActive((v) => v.selectAll()))}
+      {MenuItem("Copy all output", "list", withActive((v) => void v.copyAll()))}
+      {MenuItem("Clear screen", "clear", withActive((v) => v.clear()))}
       {MenuItem("Bigger text", "plus", resize(1))}
       {MenuItem("Smaller text", "chevronDown", resize(-1))}
+      {MenuItem(
+        "Rename shell",
+        "edit",
+        withActive(() => {
+          const tab = manager.active.peek();
+          if (tab) void rename(tab);
+        }),
+      )}
       {MenuItem(
         "Restart shell",
         "refresh",
@@ -252,6 +252,8 @@ export function createTerminalPage(o: TerminalPageOptions): Node {
       }))}
       aria-selected={computed(() => String(manager.active() === tab))}
       onClick={() => manager.select(tab.id)}
+      onDblClick={() => void rename(tab)}
+      title="Double-tap to rename"
     >
       <span class="term-tab-title">{tab.title}</span>
       <button
@@ -333,12 +335,7 @@ export function createTerminalPage(o: TerminalPageOptions): Node {
       onPaste: () => void tab.view.paste(),
     });
     return (
-      <div
-        class={computed(() => ({
-          "term-pane": true,
-          hidden: manager.active() !== tab,
-        }))}
-      >
+      <div class={computed(() => ({ "term-pane": true, hidden: manager.active() !== tab }))}>
         {tab.view.el}
         {keys}
       </div>
@@ -354,13 +351,7 @@ export function createTerminalPage(o: TerminalPageOptions): Node {
   );
 
   return (
-    <Page
-      route="terminal"
-      router={router}
-      title="Terminal"
-      actions={actions}
-      flush
-    >
+    <Page route="terminal" router={router} title="Terminal" actions={actions} flush>
       <div class="term-page" onPointerDown={() => menuOpen.set(false)}>
         {menu}
         {available ? (

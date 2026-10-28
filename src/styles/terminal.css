@@ -47,34 +47,60 @@
   background-color: transparent !important;
 }
 
+/* Shown while scrolled up into the scrollback. */
+.pf-term-bottom {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--bg-raised);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.pf-term-bottom:active {
+  background: var(--bg-active);
+}
+
 /* ----- selection handles and the Copy / Paste bar ----- */
 
+/*
+ * A handle is a drop that points UP at the edge of the selection, with its
+ * tip exactly on the bottom corner of the first / last selected cell and its
+ * round body hanging below. (The tip used to point down, which made the
+ * handles look like they belonged to the row below.) The box is larger than
+ * the drawing so it is easy to grab with a finger; the tip is at the top
+ * centre of the box, which is where touchSelection.ts puts it.
+ */
 .pf-handle {
   position: absolute;
   z-index: 6;
-  width: 24px;
-  height: 24px;
-  margin-left: -12px;
+  width: 36px;
+  height: 36px;
+  margin-left: -18px;
+  margin-top: -1px;
   touch-action: none;
 }
 
 .pf-handle::after {
   content: "";
   position: absolute;
-  left: 4px;
-  top: 4px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50% 50% 50% 0;
+  left: 11px;
+  top: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 0 50% 50% 50%;
+  /* the sharp corner becomes the tip... */
   background: var(--accent);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
-  transform: rotate(-45deg);
-}
-
-/* The left handle's point faces right-up, the right handle's left-up. */
-.pf-handle-end::after {
-  border-radius: 50% 50% 0 50%;
   transform: rotate(45deg);
+  /* ...and turned to point straight up */
 }
 
 .pf-sel-bar {

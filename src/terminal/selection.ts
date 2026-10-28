@@ -47,15 +47,13 @@ export interface Metrics {
 }
 
 /** The cell under a screen point, clamped to the grid. */
-export function cellAtPoint(x: number, y: number, m: Metrics): CellPoint {
-  const col = Math.min(
-    m.cols - 1,
-    Math.max(0, Math.floor((x - m.left) / m.cellW)),
-  );
-  const row = Math.min(
-    m.rows - 1,
-    Math.max(0, Math.floor((y - m.top) / m.cellH)),
-  );
+export function cellAtPoint(
+  x: number,
+  y: number,
+  m: Metrics,
+): CellPoint {
+  const col = Math.min(m.cols - 1, Math.max(0, Math.floor((x - m.left) / m.cellW)));
+  const row = Math.min(m.rows - 1, Math.max(0, Math.floor((y - m.top) / m.cellH)));
   return { col, row: m.viewportY + row };
 }
 
@@ -107,13 +105,31 @@ export function wordAt(
   if (!line) return null;
   const cells = rowText(line, cols);
   const isWord = (i: number): boolean =>
-    cells[i] !== undefined &&
-    cells[i] !== " " &&
-    !separators.includes(cells[i]!);
+    cells[i] !== undefined && cells[i] !== " " && !separators.includes(cells[i]!);
   if (!isWord(at.col)) return null;
   let from = at.col;
   let to = at.col;
   while (from > 0 && isWord(from - 1)) from--;
   while (to < cols - 1 && isWord(to + 1)) to++;
   return { start: { col: from, row: at.row }, end: { col: to, row: at.row } };
+}
+
+/** Straight-line distance between two touch points. */
+export function touchDistance(
+  a: { clientX: number; clientY: number },
+  b: { clientX: number; clientY: number },
+): number {
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+}
+
+/** The text size a pinch asks for: the size when the fingers landed, scaled by how far they have moved apart. */
+export function pinchSize(
+  startSize: number,
+  startDistance: number,
+  distance: number,
+  min: number,
+  max: number,
+): number {
+  if (startDistance <= 0) return startSize;
+  return Math.min(max, Math.max(min, Math.round((startSize * distance) / startDistance)));
 }

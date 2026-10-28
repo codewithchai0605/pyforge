@@ -26,6 +26,7 @@ export function createTerminalConsole(
     convertEol: true, // programs print "\n", terminals want "\r\n"
     cursorBlink: true,
     webgl: deps.settings.terminalWebgl.peek(),
+    onFontSize: (size) => deps.settings.terminalFontSize.set(size),
     notify: deps.notify,
     openUrl: openExternal,
     onTraceback: callbacks.onJump,

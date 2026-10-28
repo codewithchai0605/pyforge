@@ -4,7 +4,9 @@ import {
   cellAtPoint,
   compare,
   orderedRange,
+  pinchSize,
   pointOfCell,
+  touchDistance,
   wordAt,
   type CellRange,
   type Metrics,
@@ -21,6 +23,7 @@ import type { BufferLike, CellPoint } from "./types";
  *   action bar   Copy / Paste / Select all, floating above the selection
  *   tap          clears the selection, or reports a plain tap to the owner
  *                (focus the terminal, open a link)
+ *   pinch        two fingers change the text size (when `zoom` is given)
  *   long-press on a blank spot  shows Paste / Select all there
  *
  * Plain vertical drags are left alone, so xterm's own touch scrolling works.
@@ -34,6 +37,13 @@ export interface TouchSelectionActions {
   selectAll(): void;
 }
 
+export interface TouchZoom {
+  get(): number;
+  set(size: number): void;
+  min: number;
+  max: number;
+}
+
 export interface TouchSelectionOptions {
   term: Terminal;
   /** The element that receives the touches (xterm's root element). */
@@ -43,13 +53,15 @@ export interface TouchSelectionOptions {
   actions: TouchSelectionActions;
   /** A touch that was neither a scroll nor a long-press. */
   onTap(cell: CellPoint): void;
+  /** Pinch to change the text size. */
+  zoom?: TouchZoom;
 }
 
 const LONG_PRESS_MS = 420;
 const MOVE_SLOP = 10; // px a finger may wander and still count as held in place
 const HANDLE_LIFT = 22; // px: a dragged handle aims this far above the finger
 
-type Mode = "idle" | "pending" | "extending" | "scrolling";
+type Mode = "idle" | "pending" | "extending" | "scrolling" | "pinching";
 
 export class TouchSelection {
   private mode: Mode = "idle";
@@ -60,6 +72,7 @@ export class TouchSelection {
   private current: CellRange | null = null;
   private dragging: "start" | "end" | null = null;
   private lastAutoScroll = 0;
+  private pinch: { distance: number; size: number; last: number } | null = null;
   /** Bar shown at a spot (no selection): where, in screen px. */
   private spot: { x: number; y: number } | null = null;
   private readonly bar: HTMLElement;
@@ -69,10 +82,7 @@ export class TouchSelection {
 
   constructor(private readonly o: TouchSelectionOptions) {
     this.term = o.term;
-    this.handles = {
-      start: this.makeHandle("start"),
-      end: this.makeHandle("end"),
-    };
+    this.handles = { start: this.makeHandle("start"), end: this.makeHandle("end") };
     this.bar = this.makeBar();
     o.overlay.append(this.handles.start, this.handles.end, this.bar);
 
@@ -142,6 +152,18 @@ export class TouchSelection {
 
   private touchStart(e: TouchEvent): void {
     clearTimeout(this.timer);
+    const zoom = this.o.zoom;
+    if (e.touches.length === 2 && zoom && this.mode !== "extending") {
+      // A second finger: this is a pinch, not a tap, a scroll or a selection.
+      const size = zoom.get();
+      this.pinch = {
+        distance: touchDistance(e.touches[0]!, e.touches[1]!),
+        size,
+        last: size,
+      };
+      this.mode = "pinching";
+      return;
+    }
     if (e.touches.length !== 1) return this.cancelGesture();
     const t = e.touches[0]!;
     this.startX = t.clientX;
@@ -151,12 +173,27 @@ export class TouchSelection {
   }
 
   private touchMove(e: TouchEvent): void {
+    if (this.mode === "pinching") {
+      if (e.touches.length < 2 || !this.pinch || !this.o.zoom) return;
+      e.preventDefault(); // no page zoom or scroll while pinching
+      const { min, max } = this.o.zoom;
+      const size = pinchSize(
+        this.pinch.size,
+        this.pinch.distance,
+        touchDistance(e.touches[0]!, e.touches[1]!),
+        min,
+        max,
+      );
+      if (size !== this.pinch.last) {
+        this.pinch.last = size;
+        this.o.zoom.set(size);
+      }
+      return;
+    }
     const t = e.touches[0];
     if (!t) return;
     if (this.mode === "pending") {
-      if (
-        Math.hypot(t.clientX - this.startX, t.clientY - this.startY) > MOVE_SLOP
-      ) {
+      if (Math.hypot(t.clientX - this.startX, t.clientY - this.startY) > MOVE_SLOP) {
         clearTimeout(this.timer);
         this.mode = "scrolling"; // xterm scrolls the buffer
       }
@@ -170,6 +207,12 @@ export class TouchSelection {
     clearTimeout(this.timer);
     const mode = this.mode;
     this.mode = "idle";
+    if (mode === "pinching") {
+      // The finger left over after a pinch must not count as a tap.
+      this.pinch = null;
+      e.preventDefault();
+      return;
+    }
     if (mode === "extending") {
       e.preventDefault();
       this.sync();
@@ -188,6 +231,7 @@ export class TouchSelection {
 
   private cancelGesture(): void {
     clearTimeout(this.timer);
+    this.pinch = null;
     this.mode = "idle";
   }
 
@@ -300,8 +344,7 @@ export class TouchSelection {
   }
 
   private setBarButtons(withCopy: boolean): void {
-    const specs: Array<[string, "copy" | "paste" | "selectAll", () => void]> =
-      [];
+    const specs: Array<[string, "copy" | "paste" | "selectAll", () => void]> = [];
     if (withCopy) specs.push(["Copy", "copy", () => this.o.actions.copy()]);
     specs.push(["Paste", "paste", () => this.o.actions.paste()]);
     specs.push(["Select all", "selectAll", () => this.o.actions.selectAll()]);
@@ -327,9 +370,7 @@ export class TouchSelection {
   private sync(): void {
     const m = this.metrics();
     const overlay = this.o.overlay.getBoundingClientRect();
-    const sel = this.term.hasSelection()
-      ? this.term.getSelectionPosition()
-      : undefined;
+    const sel = this.term.hasSelection() ? this.term.getSelectionPosition() : undefined;
 
     let range: CellRange | null = null;
     if (sel && m) {
@@ -343,10 +384,7 @@ export class TouchSelection {
       this.current = null;
     }
 
-    const place = (
-      el: HTMLElement,
-      p: { x: number; y: number } | null,
-    ): void => {
+    const place = (el: HTMLElement, p: { x: number; y: number } | null): void => {
       el.hidden = p === null;
       if (p) {
         el.style.left = `${p.x - overlay.left}px`;
