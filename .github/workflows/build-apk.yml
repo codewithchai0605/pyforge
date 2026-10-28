@@ -129,7 +129,9 @@ jobs:
       - name: Build signed release APK
         env:
           PYFORGE_BUILD_PYTHON: ${{ steps.py.outputs.python-path }}
-        run: bun run cordova build android --release
+        # cordova-android 15 defaults release builds to AAB. Request APK
+        # explicitly because this workflow publishes an installable APK.
+        run: bun run cordova build android --release -- --packageType=apk
 
       - name: Verify release APK
         run: |
