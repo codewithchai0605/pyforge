@@ -20,7 +20,9 @@ permissions:
   contents: read
 
 env:
-  APK_PATH: platforms/android/app/build/outputs/apk/release/app-release.apk
+  # The generated APK filename differs across Android Gradle Plugin versions.
+  # The verification step copies the signed output to this stable artifact path.
+  APK_PATH: dist/app-release.apk
 
 jobs:
   build:
@@ -131,9 +133,25 @@ jobs:
 
       - name: Verify release APK
         run: |
-          test -f "$APK_PATH"
-          APKSIGNER="${ANDROID_SDK_ROOT:-$ANDROID_HOME}/build-tools/36.0.0/apksigner"
-          test -x "$APKSIGNER"
+          RELEASE_OUTPUT_DIR="platforms/android/app/build/outputs/apk/release"
+          echo "Release APKs produced by Gradle:"
+          find "$RELEASE_OUTPUT_DIR" -maxdepth 1 -type f -name '*.apk' -printf '  %f\n' || true
+
+          # AGP may name the signed file app-release.apk or add ABI/flavor
+          # details. Never upload an unsigned APK.
+          RELEASE_APK="$(find "$RELEASE_OUTPUT_DIR" -maxdepth 1 -type f -name '*release*.apk' ! -name '*unsigned*' -print -quit)"
+          if [ -z "$RELEASE_APK" ]; then
+            echo "ERROR: Gradle did not produce a signed release APK." >&2
+            exit 1
+          fi
+          mkdir -p "$(dirname "$APK_PATH")"
+          cp "$RELEASE_APK" "$APK_PATH"
+
+          APKSIGNER="$(find "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/build-tools" -type f -name apksigner -print -quit)"
+          if [ -z "$APKSIGNER" ]; then
+            echo "ERROR: apksigner was not installed with Android build-tools." >&2
+            exit 1
+          fi
           "$APKSIGNER" verify --verbose --print-certs "$APK_PATH"
           ls -lh "$APK_PATH"
 
