@@ -1,7 +1,7 @@
 {
   "name": "com.pyforge.app",
   "displayName": "PyForge",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A Python IDE for Android: Cordova + CodeMirror 6 UI, embedded CPython (Chaquopy), turtle/matplotlib output and a one-click package manager.",
   "private": true,
   "scripts": {

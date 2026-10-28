@@ -122,15 +122,12 @@ jobs:
             echo "keyPassword=$RELEASE_KEY_PASSWORD"
           } > platforms/android/release-signing.properties
 
-      # A package update also needs a higher versionCode. GitHub run numbers are
-      # monotonic; the 100000 offset stays above the legacy config.xml code (102).
+      # config.xml is the source of truth for versionCode. Increase its
+      # android-versionCode for every release so Android accepts the update.
       - name: Build signed release APK
         env:
           PYFORGE_BUILD_PYTHON: ${{ steps.py.outputs.python-path }}
-        run: |
-          VERSION_CODE=$((100000 + GITHUB_RUN_NUMBER))
-          echo "Android versionCode: $VERSION_CODE"
-          bun run cordova build android --release -- --versionCode "$VERSION_CODE"
+        run: bun run cordova build android --release
 
       - name: Verify release APK
         run: |

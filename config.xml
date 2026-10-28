@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.pyforge.app" version="1.0.3" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+<widget id="com.pyforge.app" version="1.0.4" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
     <name>PyForge</name>
     <description>A Python IDE for Android: write, run and debug Python with turtle graphics, plots and one-click packages.</description>
     <author email="dev@example.dev">PyForge</author>
@@ -20,7 +20,7 @@
         <preference name="AndroidXEnabled" value="true" />
         <preference name="android-minSdkVersion" value="24" />
         <preference name="android-targetSdkVersion" value="36" />
-        <preference name="android-versionCode" value="102" />
+        <preference name="android-versionCode" value="104" />
         <!-- The pyruntime plugin's WebView: same as Cordova's, plus it can hide
              Android's own selection bar so the app's selection menu shows
              alone (see PyForgeWebView.kt). Also set by the plugin itself. -->
