@@ -135,7 +135,9 @@ jobs:
       - name: Verify release APK
         run: |
           test -f "$APK_PATH"
-          apksigner verify --verbose --print-certs "$APK_PATH"
+          APKSIGNER="${ANDROID_SDK_ROOT:-$ANDROID_HOME}/build-tools/36.0.0/apksigner"
+          test -x "$APKSIGNER"
+          "$APKSIGNER" verify --verbose --print-certs "$APK_PATH"
           ls -lh "$APK_PATH"
 
       - uses: actions/upload-artifact@v7
