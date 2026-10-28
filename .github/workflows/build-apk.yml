@@ -1,15 +1,14 @@
-name: Build & release debug APK
+name: Build & release APK
 
-# Push a tag like v0.1.0  -> builds and publishes app-debug.apk to that release.
-# Or run it by hand (Actions tab -> Run workflow) and optionally give a tag name;
-# with no tag it publishes as "debug-<run number>".
+# Push a tag such as v1.0.4 to build and publish a signed release APK. You can
+# also run this workflow manually and optionally choose the release tag.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to create or update (empty = debug-<run number>)"
+        description: "Release tag to create or update (empty = release-<run number>)"
         required: false
         type: string
 
@@ -21,11 +20,11 @@ permissions:
   contents: read
 
 env:
-  APK_PATH: platforms/android/app/build/outputs/apk/debug/app-debug.apk
+  APK_PATH: platforms/android/app/build/outputs/apk/release/app-release.apk
 
 jobs:
   build:
-    name: Build app-debug.apk
+    name: Build signed app-release.apk
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -72,20 +71,27 @@ jobs:
           mkdir -p ~/.gradle
           echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
 
-      # Always use the same key: Android only allows an update when the APK
-      # signer matches the app already installed on the device.
-      - name: Restore stable debug keystore
+      # Android only permits updates signed by the exact same certificate. For
+      # the first release migration, set RELEASE_* to the key used by the old
+      # debug builds (or leave the old DEBUG_KEYSTORE_BASE64 secret in place;
+      # its conventional Android debug credentials are used as a fallback).
+      - name: Restore release signing key
         env:
-          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 || secrets.DEBUG_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD || 'android' }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS || 'androiddebugkey' }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD || 'android' }}
         run: |
-          if [ -z "$DEBUG_KEYSTORE_BASE64" ]; then
-            echo "ERROR: Set the DEBUG_KEYSTORE_BASE64 Actions secret to the keystore used to sign the installed app." >&2
+          if [ -z "$RELEASE_KEYSTORE_BASE64" ]; then
+            echo "ERROR: Set RELEASE_KEYSTORE_BASE64 to the base64-encoded keystore used by the installed app." >&2
             exit 1
           fi
-          mkdir -p ~/.android
-          printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 --decode > ~/.android/debug.keystore
-          keytool -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey >/dev/null
-          echo "Stable debug keystore restored and verified."
+          mkdir -p .ci
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > .ci/release.keystore
+          keytool -list -keystore .ci/release.keystore \
+            -storepass "$RELEASE_KEYSTORE_PASSWORD" \
+            -alias "$RELEASE_KEY_ALIAS" >/dev/null
+          echo "Release signing key restored and verified."
 
       - name: Install JS dependencies
         run: bun install --frozen-lockfile
@@ -95,24 +101,46 @@ jobs:
         run: bun run build
 
       # `cordova build` refuses to run without a platforms/ folder, and platforms/
-      # is gitignored. `cordova prepare` restores the android platform and the
+      # is gitignored. `cordova prepare` restores the Android platform and the
       # plugins from package.json / config.xml (and runs the Chaquopy hook).
       - name: Add Cordova platform and plugins
         run: bun run cordova:plugins && bun run cordova prepare android
 
-      - name: Build debug APK
+      # Cordova detects this file and configures the Gradle release signing
+      # config. It is created only after prepare because platforms/ is generated.
+      - name: Configure release signing
+        env:
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD || 'android' }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS || 'androiddebugkey' }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD || 'android' }}
+        run: |
+          umask 077
+          {
+            echo "storeFile=$GITHUB_WORKSPACE/.ci/release.keystore"
+            echo "storePassword=$RELEASE_KEYSTORE_PASSWORD"
+            echo "keyAlias=$RELEASE_KEY_ALIAS"
+            echo "keyPassword=$RELEASE_KEY_PASSWORD"
+          } > platforms/android/release-signing.properties
+
+      # A package update also needs a higher versionCode. GitHub run numbers are
+      # monotonic; the 100000 offset stays above the legacy config.xml code (102).
+      - name: Build signed release APK
         env:
           PYFORGE_BUILD_PYTHON: ${{ steps.py.outputs.python-path }}
-        run: bun run cordova build android --debug
+        run: |
+          VERSION_CODE=$((100000 + GITHUB_RUN_NUMBER))
+          echo "Android versionCode: $VERSION_CODE"
+          bun run cordova build android --release -- --versionCode "$VERSION_CODE"
 
-      - name: Check APK
+      - name: Verify release APK
         run: |
           test -f "$APK_PATH"
+          apksigner verify --verbose --print-certs "$APK_PATH"
           ls -lh "$APK_PATH"
 
       - uses: actions/upload-artifact@v7
         with:
-          name: app-debug-apk
+          name: app-release-apk
           path: ${{ env.APK_PATH }}
           if-no-files-found: error
           retention-days: 14
@@ -128,7 +156,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: app-debug-apk
+          name: app-release-apk
           path: dist
 
       - name: Create or update the release
@@ -140,27 +168,34 @@ jobs:
           RUN_NUMBER: ${{ github.run_number }}
           SHA: ${{ github.sha }}
         run: |
-          TAG="${TAG_FROM_REF:-${TAG_FROM_INPUT:-debug-$RUN_NUMBER}}"
+          TAG="${TAG_FROM_REF:-${TAG_FROM_INPUT:-release-$RUN_NUMBER}}"
           echo "Release tag: $TAG"
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             # Re-run, or a tag that already has a release: replace the APK.
-            gh release upload "$TAG" dist/app-debug.apk --clobber
+            gh release upload "$TAG" dist/app-release.apk --clobber
           else
-            gh release create "$TAG" dist/app-debug.apk \
+            gh release create "$TAG" dist/app-release.apk \
               --target "$SHA" \
               --title "PyForge $TAG" \
               --generate-notes
           fi
 
 # ---------------------------------------------------------------------------
-# Stable debug key (one-time setup)
+# Required GitHub Actions secrets
 #
-#   keytool -genkeypair -v -keystore debug.keystore -storepass android \
-#     -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 \
-#     -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-#   base64 -w0 debug.keystore      # macOS: base64 -i debug.keystore
+#   RELEASE_KEYSTORE_BASE64  Base64 of the keystore that signed the old APK.
+#   RELEASE_KEYSTORE_PASSWORD
+#   RELEASE_KEY_ALIAS
+#   RELEASE_KEY_PASSWORD
 #
-# Set the output as Settings -> Secrets and variables -> Actions ->
-# New repository secret, named DEBUG_KEYSTORE_BASE64. Never commit the keystore.
+# To upgrade existing debug installations without an uninstall, the release key
+# must be the *same key and alias* as the old debug APK. If that old key was the
+# conventional Android debug key, the existing DEBUG_KEYSTORE_BASE64 secret is
+# accepted temporarily and the remaining credentials default to android /
+# androiddebugkey / android. Move it to the RELEASE_* secrets once verified.
+#
+# On Linux: base64 -w0 release.keystore
+# On macOS: base64 -i release.keystore
+# Never commit a keystore or its passwords.
 # ---------------------------------------------------------------------------
